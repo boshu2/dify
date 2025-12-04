@@ -219,10 +219,20 @@ class OracleVector(BaseVector):
             conn.commit()
             conn.close()
 
+    @staticmethod
+    def _validate_metadata_key(key: str) -> str:
+        """Validate metadata key to prevent SQL injection. Only allow alphanumeric and underscore."""
+        import re
+
+        if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", key):
+            raise ValueError(f"Invalid metadata key: {key}")
+        return key
+
     def delete_by_metadata_field(self, key: str, value: str):
+        safe_key = self._validate_metadata_key(key)
         with self._get_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(f"DELETE FROM {self.table_name} WHERE JSON_VALUE(meta, '$." + key + "') = :1", (value,))
+                cur.execute(f"DELETE FROM {self.table_name} WHERE JSON_VALUE(meta, '$.{safe_key}') = :1", (value,))
             conn.commit()
             conn.close()
 

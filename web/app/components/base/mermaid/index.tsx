@@ -71,7 +71,7 @@ const initMermaid = () => {
       const config: MermaidConfig = {
         startOnLoad: false,
         fontFamily: 'sans-serif',
-        securityLevel: 'loose',
+        securityLevel: 'strict',
         flowchart: {
           htmlLabels: true,
           useMaxWidth: true,
@@ -299,7 +299,7 @@ const Flowchart = (props: FlowchartProps) => {
       const themeVars = THEMES[currentTheme]
       const config: any = {
         startOnLoad: false,
-        securityLevel: 'loose',
+        securityLevel: 'strict',
         fontFamily: 'sans-serif',
         maxTextSize: 50000,
         gantt: {

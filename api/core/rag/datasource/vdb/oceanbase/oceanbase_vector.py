@@ -196,13 +196,24 @@ class OceanBaseVector(BaseVector):
             return
         self._client.delete(table_name=self._collection_name, ids=ids)
 
+    @staticmethod
+    def _validate_metadata_key(key: str) -> str:
+        """Validate metadata key to prevent SQL injection. Only allow alphanumeric and underscore."""
+        import re
+
+        if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", key):
+            raise ValueError(f"Invalid metadata key: {key}")
+        return key
+
     def get_ids_by_metadata_field(self, key: str, value: str) -> list[str]:
         from sqlalchemy import text
 
+        safe_key = self._validate_metadata_key(key)
+        # Use parameterized query by binding the value
         cur = self._client.get(
             table_name=self._collection_name,
             ids=None,
-            where_clause=[text(f"metadata->>'$.{key}' = '{value}'")],
+            where_clause=[text(f"metadata->>'$.{safe_key}' = :value").bindparams(value=value)],
             output_column_name=["id"],
         )
         return [row[0] for row in cur]
@@ -222,22 +233,26 @@ class OceanBaseVector(BaseVector):
 
             document_ids_filter = kwargs.get("document_ids_filter")
             where_clause = ""
+            params: dict[str, Any] = {"query": query, "top_k": top_k}
+
             if document_ids_filter:
-                document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-                where_clause = f" AND metadata->>'$.document_id' IN ({document_ids})"
+                placeholders = ", ".join([f":doc_id_{i}" for i in range(len(document_ids_filter))])
+                for i, doc_id in enumerate(document_ids_filter):
+                    params[f"doc_id_{i}"] = doc_id
+                where_clause = f" AND metadata->>'$.document_id' IN ({placeholders})"
 
             full_sql = f"""SELECT metadata, text, MATCH (text) AGAINST (:query) AS score
             FROM {self._collection_name}
             WHERE MATCH (text) AGAINST (:query) > 0
             {where_clause}
             ORDER BY score DESC
-            LIMIT {top_k}"""
+            LIMIT :top_k"""
 
             with self._client.engine.connect() as conn:
                 with conn.begin():
                     from sqlalchemy import text
 
-                    result = conn.execute(text(full_sql), {"query": query})
+                    result = conn.execute(text(full_sql), params)
                     rows = result.fetchall()
 
                     docs = []
@@ -257,14 +272,17 @@ class OceanBaseVector(BaseVector):
             return []
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
+        from sqlalchemy import text
+
         document_ids_filter = kwargs.get("document_ids_filter")
         _where_clause = None
         if document_ids_filter:
-            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-            where_clause = f"metadata->>'$.document_id' in ({document_ids})"
-            from sqlalchemy import text
+            # Build parameterized where clause for document_id filtering
+            placeholders = ", ".join([f":doc_id_{i}" for i in range(len(document_ids_filter))])
+            bound_params = {f"doc_id_{i}": doc_id for i, doc_id in enumerate(document_ids_filter)}
+            where_clause_text = text(f"metadata->>'$.document_id' IN ({placeholders})").bindparams(**bound_params)
+            _where_clause = [where_clause_text]
 
-            _where_clause = [text(where_clause)]
         ef_search = kwargs.get("ef_search", self._hnsw_ef_search)
         if ef_search != self._hnsw_ef_search:
             self._client.set_ob_hnsw_ef_search(ef_search)

@@ -98,50 +98,86 @@ class MyScaleVector(BaseVector):
         return "".join(" " if c in {"\\", "'"} else c for c in str(value))
 
     def text_exists(self, id: str) -> bool:
-        results = self._client.query(f"SELECT id FROM {self._config.database}.{self._collection_name} WHERE id='{id}'")
+        results = self._client.query(
+            f"SELECT id FROM {self._config.database}.{self._collection_name} WHERE id = {{id:String}}",
+            parameters={"id": id},
+        )
         return results.row_count > 0
 
     def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
         self._client.command(
-            f"DELETE FROM {self._config.database}.{self._collection_name} WHERE id IN {str(tuple(ids))}"
+            f"DELETE FROM {self._config.database}.{self._collection_name} WHERE id IN {{ids:Array(String)}}",
+            parameters={"ids": ids},
         )
 
+    @staticmethod
+    def _validate_metadata_key(key: str) -> str:
+        """Validate metadata key to prevent SQL injection. Only allow alphanumeric and underscore."""
+        import re
+
+        if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", key):
+            raise ValueError(f"Invalid metadata key: {key}")
+        return key
+
     def get_ids_by_metadata_field(self, key: str, value: str):
+        safe_key = self._validate_metadata_key(key)
         rows = self._client.query(
-            f"SELECT DISTINCT id FROM {self._config.database}.{self._collection_name} WHERE metadata.{key}='{value}'"
+            f"SELECT DISTINCT id FROM {self._config.database}.{self._collection_name} "
+            f"WHERE metadata.{safe_key} = {{value:String}}",
+            parameters={"value": value},
         ).result_rows
         return [row[0] for row in rows]
 
     def delete_by_metadata_field(self, key: str, value: str):
+        safe_key = self._validate_metadata_key(key)
         self._client.command(
-            f"DELETE FROM {self._config.database}.{self._collection_name} WHERE metadata.{key}='{value}'"
+            f"DELETE FROM {self._config.database}.{self._collection_name} WHERE metadata.{safe_key} = {{value:String}}",
+            parameters={"value": value},
         )
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
-        return self._search(f"distance(vector, {str(query_vector)})", self._vec_order, **kwargs)
+        return self._search(
+            dist_expr="distance(vector, {query_vector:Array(Float32)})",
+            order=self._vec_order,
+            extra_params={"query_vector": query_vector},
+            **kwargs,
+        )
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        return self._search(f"TextSearch('enable_nlq=false')(text, '{query}')", SortOrder.DESC, **kwargs)
+        return self._search(
+            dist_expr="TextSearch('enable_nlq=false')(text, {query:String})",
+            order=SortOrder.DESC,
+            extra_params={"query": query},
+            **kwargs,
+        )
 
-    def _search(self, dist: str, order: SortOrder, **kwargs: Any) -> list[Document]:
+    def _search(
+        self, dist_expr: str, order: SortOrder, extra_params: dict[str, Any] | None = None, **kwargs: Any
+    ) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
         if not isinstance(top_k, int) or top_k <= 0:
             raise ValueError("top_k must be a positive integer")
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
-        where_str = (
-            f"WHERE dist < {1 - score_threshold}"
-            if self._metric.upper() == "COSINE" and order == SortOrder.ASC and score_threshold > 0.0
-            else ""
-        )
+
+        params: dict[str, Any] = extra_params.copy() if extra_params else {}
+        params["top_k"] = top_k
+
+        where_conditions = []
+        if self._metric.upper() == "COSINE" and order == SortOrder.ASC and score_threshold > 0.0:
+            where_conditions.append(f"dist < {1 - score_threshold}")
+
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-            where_str = f"{where_str} AND metadata['document_id'] in ({document_ids})"
+            where_conditions.append("metadata['document_id'] IN {doc_ids:Array(String)}")
+            params["doc_ids"] = list(document_ids_filter)
+
+        where_str = f"WHERE {' AND '.join(where_conditions)}" if where_conditions else ""
+
         sql = f"""
-            SELECT text, vector, metadata, {dist} as dist FROM {self._config.database}.{self._collection_name}
-            {where_str} ORDER BY dist {order.value} LIMIT {top_k}
+            SELECT text, vector, metadata, {dist_expr} as dist FROM {self._config.database}.{self._collection_name}
+            {where_str} ORDER BY dist {order.value} LIMIT {{top_k:UInt32}}
         """
         try:
             return [
@@ -150,7 +186,7 @@ class MyScaleVector(BaseVector):
                     vector=r["vector"],
                     metadata=r["metadata"],
                 )
-                for r in self._client.query(sql).named_results()
+                for r in self._client.query(sql, parameters=params).named_results()
             ]
         except Exception:
             logger.exception("Vector search operation failed")

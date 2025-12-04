@@ -25,6 +25,18 @@ const isBase64 = (str: string): boolean => {
   }
 }
 
+/**
+ * Escape HTML attribute values to prevent XSS attacks
+ */
+const escapeHtmlAttribute = (str: string): string => {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
 const ImagePreview: FC<ImagePreviewProps> = ({
   url,
   title,
@@ -45,9 +57,10 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       window.open(url, '_blank')
     }
     else if (url.startsWith('data:image')) {
-      // Base64 image
+      // Base64 image - escape title to prevent XSS
       const win = window.open()
-      win?.document.write(`<img src="${url}" alt="${title}" />`)
+      const safeTitle = escapeHtmlAttribute(title)
+      win?.document.write(`<img src="${url}" alt="${safeTitle}" />`)
     }
     else {
       Toast.notify({

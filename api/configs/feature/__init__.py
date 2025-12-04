@@ -444,6 +444,11 @@ class HttpConfig(BaseSettings):
         default=True,
     )
 
+    SSRF_PROTECTION_ENABLED: bool = Field(
+        description="Enable SSRF protection to block requests to private/reserved IP addresses",
+        default=True,
+    )
+
     SSRF_DEFAULT_MAX_RETRIES: PositiveInt = Field(
         description="Maximum number of retries for network requests (SSRF)",
         default=3,

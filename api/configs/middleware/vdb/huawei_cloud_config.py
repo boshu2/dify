@@ -21,3 +21,8 @@ class HuaweiCloudConfig(BaseSettings):
         description="Password for authenticating with Huawei cloud search service",
         default=None,
     )
+
+    HUAWEI_CLOUD_VERIFY_CERTS: bool = Field(
+        description="Whether to verify SSL certificates when connecting to Huawei cloud search service",
+        default=True,
+    )

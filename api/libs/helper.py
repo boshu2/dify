@@ -4,7 +4,6 @@ import re
 import secrets
 import string
 import struct
-import subprocess
 import time
 import uuid
 from collections.abc import Generator, Mapping
@@ -52,10 +51,6 @@ def extract_tenant_id(user: Union["Account", "EndUser"]) -> str | None:
         return user.tenant_id
     else:
         raise ValueError(f"Invalid user type: {type(user)}. Expected Account or EndUser.")
-
-
-def run(script):
-    return subprocess.getstatusoutput("source /root/.bashrc && " + script)
 
 
 class AppIconUrlField(fields.Raw):

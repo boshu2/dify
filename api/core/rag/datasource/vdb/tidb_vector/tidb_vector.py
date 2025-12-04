@@ -146,11 +146,13 @@ class TiDBVector(BaseVector):
 
     def delete_by_ids(self, ids: list[str]):
         with Session(self._engine) as session:
-            ids_str = ",".join(f"'{doc_id}'" for doc_id in ids)
+            # Use JSON_CONTAINS for MySQL/TiDB array matching
+            placeholders = ", ".join([":doc_id_" + str(i) for i in range(len(ids))])
+            params = {f"doc_id_{i}": doc_id for i, doc_id in enumerate(ids)}
             select_statement = sql_text(
-                f"""SELECT id FROM {self._collection_name} WHERE meta->>'$.doc_id' in ({ids_str}); """
+                f"SELECT id FROM {self._collection_name} WHERE meta->>'$.doc_id' IN ({placeholders})"
             )
-            result = session.execute(select_statement).fetchall()
+            result = session.execute(select_statement, params).fetchall()
         if result:
             ids = [item[0] for item in result]
             self._delete_by_ids(ids)
@@ -168,12 +170,20 @@ class TiDBVector(BaseVector):
             logger.exception("Delete operation failed for collection %s", self._collection_name)
             return False
 
+    @staticmethod
+    def _validate_metadata_key(key: str) -> str:
+        """Validate metadata key to prevent SQL injection. Only allow alphanumeric and underscore."""
+        import re
+
+        if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", key):
+            raise ValueError(f"Invalid metadata key: {key}")
+        return key
+
     def get_ids_by_metadata_field(self, key: str, value: str):
+        safe_key = self._validate_metadata_key(key)
         with Session(self._engine) as session:
-            select_statement = sql_text(
-                f"""SELECT id FROM {self._collection_name} WHERE meta->>'$.{key}' = '{value}'; """
-            )
-            result = session.execute(select_statement).fetchall()
+            select_statement = sql_text(f"SELECT id FROM {self._collection_name} WHERE meta->>'$.{safe_key}' = :value")
+            result = session.execute(select_statement, {"value": value}).fetchall()
         if result:
             return [item[0] for item in result]
         else:
@@ -199,9 +209,17 @@ class TiDBVector(BaseVector):
         tidb_dist_func = self._get_distance_func()
         document_ids_filter = kwargs.get("document_ids_filter")
         where_clause = ""
+        params: dict[str, Any] = {
+            "query_vector_str": query_vector_str,
+            "distance": distance,
+            "top_k": top_k,
+        }
+
         if document_ids_filter:
-            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-            where_clause = f" WHERE meta->>'$.document_id' in ({document_ids}) "
+            placeholders = ", ".join([f":doc_id_{i}" for i in range(len(document_ids_filter))])
+            for i, doc_id in enumerate(document_ids_filter):
+                params[f"doc_id_{i}"] = doc_id
+            where_clause = f" WHERE meta->>'$.document_id' IN ({placeholders}) "
 
         with Session(self._engine) as session:
             select_statement = sql_text(f"""
@@ -218,14 +236,7 @@ class TiDBVector(BaseVector):
                 ) t
                 WHERE distance <= :distance
                 """)
-            res = session.execute(
-                select_statement,
-                params={
-                    "query_vector_str": query_vector_str,
-                    "distance": distance,
-                    "top_k": top_k,
-                },
-            )
+            res = session.execute(select_statement, params=params)
             results = [(row[0], row[1], row[2]) for row in res]
             for meta, text, distance in results:
                 metadata = json.loads(meta)

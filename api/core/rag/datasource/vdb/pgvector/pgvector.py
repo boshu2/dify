@@ -178,16 +178,20 @@ class PGVector(BaseVector):
             raise ValueError("top_k must be a positive integer")
         document_ids_filter = kwargs.get("document_ids_filter")
         where_clause = ""
+        params: list[Any] = [json.dumps(query_vector)]
+
         if document_ids_filter:
-            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-            where_clause = f" WHERE meta->>'document_id' in ({document_ids}) "
+            where_clause = " WHERE meta->>'document_id' = ANY(%s) "
+            params.append(list(document_ids_filter))
+
+        params.append(top_k)
 
         with self._get_cursor() as cur:
             cur.execute(
                 f"SELECT meta, text, embedding <=> %s AS distance FROM {self.table_name}"
                 f" {where_clause}"
-                f" ORDER BY distance LIMIT {top_k}",
-                (json.dumps(query_vector),),
+                f" ORDER BY distance LIMIT %s",
+                tuple(params),
             )
             docs = []
             score_threshold = float(kwargs.get("score_threshold") or 0.0)
@@ -206,31 +210,36 @@ class PGVector(BaseVector):
         with self._get_cursor() as cur:
             document_ids_filter = kwargs.get("document_ids_filter")
             where_clause = ""
+            extra_params: list[Any] = []
+
             if document_ids_filter:
-                document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-                where_clause = f" AND meta->>'document_id' in ({document_ids}) "
+                where_clause = " AND meta->>'document_id' = ANY(%s) "
+                extra_params.append(list(document_ids_filter))
+
             if self.pg_bigm:
                 cur.execute("SET pg_bigm.similarity_limit TO 0.000001")
+                # f"'{query}'" is required in order to account for whitespace in query
+                params = [f"'{query}'", f"'{query}'"] + extra_params + [top_k]
                 cur.execute(
                     f"""SELECT meta, text, bigm_similarity(unistr(%s), coalesce(text, '')) AS score
                     FROM {self.table_name}
                     WHERE text =%% unistr(%s)
                     {where_clause}
                     ORDER BY score DESC
-                    LIMIT {top_k}""",
-                    # f"'{query}'" is required in order to account for whitespace in query
-                    (f"'{query}'", f"'{query}'"),
+                    LIMIT %s""",
+                    tuple(params),
                 )
             else:
+                # f"'{query}'" is required in order to account for whitespace in query
+                params = [f"'{query}'", f"'{query}'"] + extra_params + [top_k]
                 cur.execute(
                     f"""SELECT meta, text, ts_rank(to_tsvector(coalesce(text, '')), plainto_tsquery(%s)) AS score
                     FROM {self.table_name}
                     WHERE to_tsvector(text) @@ plainto_tsquery(%s)
                     {where_clause}
                     ORDER BY score DESC
-                    LIMIT {top_k}""",
-                    # f"'{query}'" is required in order to account for whitespace in query
-                    (f"'{query}'", f"'{query}'"),
+                    LIMIT %s""",
+                    tuple(params),
                 )
 
             docs = []

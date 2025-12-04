@@ -1,6 +1,5 @@
 import json
 import logging
-import ssl
 from typing import Any
 
 from elasticsearch import Elasticsearch
@@ -19,17 +18,11 @@ from models.dataset import Dataset
 logger = logging.getLogger(__name__)
 
 
-def create_ssl_context() -> ssl.SSLContext:
-    ssl_context = ssl.create_default_context()
-    ssl_context.check_hostname = False
-    ssl_context.verify_mode = ssl.CERT_NONE
-    return ssl_context
-
-
 class HuaweiCloudVectorConfig(BaseModel):
     hosts: str
     username: str | None = None
     password: str | None = None
+    verify_certs: bool = True  # SSL certificate verification enabled by default
 
     @model_validator(mode="before")
     @classmethod
@@ -41,12 +34,17 @@ class HuaweiCloudVectorConfig(BaseModel):
     def to_elasticsearch_params(self) -> dict[str, Any]:
         params = {
             "hosts": self.hosts.split(","),
-            "verify_certs": False,
-            "ssl_show_warn": False,
+            "verify_certs": self.verify_certs,
+            "ssl_show_warn": not self.verify_certs,  # Show warnings only when verification is disabled
             "request_timeout": 30000,
             "retry_on_timeout": True,
             "max_retries": 10,
         }
+        if not self.verify_certs:
+            logger.warning(
+                "SSL certificate verification is disabled for Huawei Cloud Vector. "
+                "This is insecure and should not be used in production."
+            )
         if self.username and self.password:
             params["basic_auth"] = (self.username, self.password)
         return params
@@ -211,5 +209,6 @@ class HuaweiCloudVectorFactory(AbstractVectorFactory):
                 hosts=dify_config.HUAWEI_CLOUD_HOSTS or "http://localhost:9200",
                 username=dify_config.HUAWEI_CLOUD_USER,
                 password=dify_config.HUAWEI_CLOUD_PASSWORD,
+                verify_certs=dify_config.HUAWEI_CLOUD_VERIFY_CERTS,
             ),
         )

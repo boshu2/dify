@@ -151,13 +151,21 @@ class RelytVector(BaseVector):
 
         return ids
 
+    @staticmethod
+    def _validate_metadata_key(key: str) -> str:
+        """Validate metadata key to prevent SQL injection. Only allow alphanumeric and underscore."""
+        import re
+
+        if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", key):
+            raise ValueError(f"Invalid metadata key: {key}")
+        return key
+
     def get_ids_by_metadata_field(self, key: str, value: str):
         result = None
+        safe_key = self._validate_metadata_key(key)
         with Session(self.client) as session:
-            select_statement = sql_text(
-                f"""SELECT id FROM "{self._collection_name}" WHERE metadata->>'{key}' = '{value}'; """
-            )
-            result = session.execute(select_statement).fetchall()
+            select_statement = sql_text(f'SELECT id FROM "{self._collection_name}" WHERE metadata->>:key = :value')
+            result = session.execute(select_statement, {"key": safe_key, "value": value}).fetchall()
         if result:
             return [item[0] for item in result]
         else:
@@ -201,11 +209,10 @@ class RelytVector(BaseVector):
 
     def delete_by_ids(self, ids: list[str]):
         with Session(self.client) as session:
-            ids_str = ",".join(f"'{doc_id}'" for doc_id in ids)
             select_statement = sql_text(
-                f"""SELECT id FROM "{self._collection_name}" WHERE metadata->>'doc_id' in ({ids_str}); """
+                f"SELECT id FROM \"{self._collection_name}\" WHERE metadata->>'doc_id' = ANY(:doc_ids)"
             )
-            result = session.execute(select_statement).fetchall()
+            result = session.execute(select_statement, {"doc_ids": ids}).fetchall()
         if result:
             ids = [item[0] for item in result]
             self.delete_by_uuids(ids)
@@ -218,9 +225,9 @@ class RelytVector(BaseVector):
     def text_exists(self, id: str) -> bool:
         with Session(self.client) as session:
             select_statement = sql_text(
-                f"""SELECT id FROM "{self._collection_name}" WHERE metadata->>'doc_id' = '{id}' limit 1; """
+                f"SELECT id FROM \"{self._collection_name}\" WHERE metadata->>'doc_id' = :doc_id LIMIT 1"
             )
-            result = session.execute(select_statement).fetchall()
+            result = session.execute(select_statement, {"doc_id": id}).fetchall()
         return len(result) > 0
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
@@ -246,16 +253,24 @@ class RelytVector(BaseVector):
         k: int = 4,
         filter: dict | None = None,
     ) -> list[tuple[Document, float]]:
-        # Add the filter if provided
+        # Set up the query parameters
+        embedding_str = ", ".join(format(x) for x in embedding)
+        embedding_str = "[" + embedding_str + "]"
+        params: dict[str, Any] = {"embedding": embedding_str, "k": k}
 
+        # Add the filter if provided using parameterized queries
         filter_condition = ""
         if filter is not None:
-            conditions = [
-                f"metadata->>'{key!r}' in ({', '.join(map(repr, value))})"
-                if len(value) > 1
-                else f"metadata->>'{key!r}' = {value[0]!r}"
-                for key, value in filter.items()
-            ]
+            conditions = []
+            for idx, (key, value) in enumerate(filter.items()):
+                safe_key = self._validate_metadata_key(key)
+                param_name = f"filter_val_{idx}"
+                if len(value) > 1:
+                    conditions.append(f"metadata->>'{safe_key}' = ANY(:{param_name})")
+                    params[param_name] = list(value)
+                else:
+                    conditions.append(f"metadata->>'{safe_key}' = :{param_name}")
+                    params[param_name] = value[0]
             filter_condition = f"WHERE {' AND '.join(conditions)}"
 
         # Define the base query
@@ -268,11 +283,6 @@ class RelytVector(BaseVector):
             ORDER BY embedding <-> :embedding
             LIMIT :k
         """
-
-        # Set up the query parameters
-        embedding_str = ", ".join(format(x) for x in embedding)
-        embedding_str = "[" + embedding_str + "]"
-        params = {"embedding": embedding_str, "k": k}
 
         # Execute the query and fetch the results
         with self.client.connect() as conn:

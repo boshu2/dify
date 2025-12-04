@@ -7,11 +7,18 @@ from typing import Any
 from urllib import parse
 from urllib.error import HTTPError
 
-# Create an SSL context that allows for a lower level of security
+# Create an SSL context with configurable certificate verification
+# Set APOLLO_SSL_VERIFY=false to disable SSL verification (not recommended for production)
 ssl_context = ssl.create_default_context()
 ssl_context.set_ciphers("HIGH:!DH:!aNULL")
-ssl_context.check_hostname = False
-ssl_context.verify_mode = ssl.CERT_NONE
+
+# Only disable SSL verification if explicitly configured (defaults to secure)
+if os.environ.get("APOLLO_SSL_VERIFY", "true").lower() == "false":
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    logging.getLogger(__name__).warning(
+        "SSL certificate verification is disabled for Apollo. This is insecure and should not be used in production."
+    )
 
 # Create an opener object and pass in a custom SSL context
 opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ssl_context))

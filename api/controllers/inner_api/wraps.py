@@ -1,7 +1,7 @@
 from base64 import b64encode
 from collections.abc import Callable
 from functools import wraps
-from hashlib import sha1
+from hashlib import sha256
 from hmac import new as hmac_new
 from typing import ParamSpec, TypeVar
 
@@ -69,7 +69,7 @@ def enterprise_inner_api_user_auth(view: Callable[P, R]):
 
         data_to_sign = f"DIFY {user_id}"
 
-        signature = hmac_new(inner_api_key.encode("utf-8"), data_to_sign.encode("utf-8"), sha1)
+        signature = hmac_new(inner_api_key.encode("utf-8"), data_to_sign.encode("utf-8"), sha256)
         signature_base64 = b64encode(signature.digest()).decode("utf-8")
 
         if signature_base64 != token:

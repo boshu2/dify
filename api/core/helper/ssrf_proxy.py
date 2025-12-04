@@ -2,8 +2,11 @@
 Proxy requests to avoid SSRF
 """
 
+import ipaddress
 import logging
+import socket
 import time
+from urllib.parse import urlparse
 
 import httpx
 
@@ -11,6 +14,93 @@ from configs import dify_config
 from core.helper.http_client_pooling import get_pooled_http_client
 
 logger = logging.getLogger(__name__)
+
+
+class SSRFProtectionError(ValueError):
+    """Raised when a request is blocked due to SSRF protection."""
+
+    pass
+
+
+def _is_private_ip(ip_str: str) -> bool:
+    """Check if an IP address is private, loopback, or otherwise reserved."""
+    # Cloud metadata service IPs (AWS/GCP/Azure)
+    cloud_metadata_ips = {"169.254.169.254", "169.254.169.253"}
+
+    try:
+        ip = ipaddress.ip_address(ip_str)
+        # Check for private, loopback, link-local, reserved, and multicast addresses
+        return (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_reserved
+            or ip.is_multicast
+            or ip_str in cloud_metadata_ips
+            or ip_str.startswith("fd00:")  # IPv6 unique local addresses
+        )
+    except ValueError:
+        return False
+
+
+def _resolve_hostname(hostname: str) -> list[str]:
+    """Resolve hostname to IP addresses."""
+    try:
+        # Get all IP addresses for the hostname
+        results = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
+        return list({result[4][0] for result in results})
+    except socket.gaierror:
+        return []
+
+
+def validate_url(url: str) -> None:
+    """
+    Validate URL to prevent SSRF attacks.
+
+    Raises SSRFProtectionError if the URL points to a private/reserved IP address.
+    """
+    # Skip validation if SSRF protection is disabled via config
+    if not dify_config.SSRF_PROTECTION_ENABLED:
+        return
+
+    try:
+        parsed = urlparse(url)
+    except Exception as e:
+        raise SSRFProtectionError(f"Invalid URL: {e}")
+
+    # Check scheme
+    if parsed.scheme not in ("http", "https"):
+        raise SSRFProtectionError(f"Invalid URL scheme: {parsed.scheme}. Only http and https are allowed.")
+
+    hostname = parsed.hostname
+    if not hostname:
+        raise SSRFProtectionError("Invalid URL: missing hostname")
+
+    # Check if hostname is an IP address
+    try:
+        ip = ipaddress.ip_address(hostname)
+        if _is_private_ip(str(ip)):
+            raise SSRFProtectionError(
+                f"Access to private/reserved IP address {hostname} is blocked for security reasons."
+            )
+        return
+    except ValueError:
+        # Not an IP address, proceed to DNS resolution
+        pass
+
+    # Resolve hostname and check all resulting IPs
+    resolved_ips = _resolve_hostname(hostname)
+    if not resolved_ips:
+        # Allow the request to proceed - the HTTP client will handle DNS resolution failure
+        return
+
+    for ip_str in resolved_ips:
+        if _is_private_ip(ip_str):
+            raise SSRFProtectionError(
+                f"Hostname {hostname} resolves to private/reserved IP address {ip_str}. "
+                "Access is blocked for security reasons."
+            )
+
 
 SSRF_DEFAULT_MAX_RETRIES = dify_config.SSRF_DEFAULT_MAX_RETRIES
 
@@ -72,6 +162,10 @@ def _get_ssrf_client(ssl_verify_enabled: bool) -> httpx.Client:
 
 
 def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
+    # Validate URL to prevent SSRF attacks (unless explicitly disabled via ssrf_validate=False)
+    if kwargs.pop("ssrf_validate", True):
+        validate_url(url)
+
     if "allow_redirects" in kwargs:
         allow_redirects = kwargs.pop("allow_redirects")
         if "follow_redirects" not in kwargs:

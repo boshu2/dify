@@ -147,12 +147,27 @@ function requiredWebSSOLogin(message?: string, code?: number) {
   globalThis.location.href = `${globalThis.location.origin}${basePath}/${WBB_APP_LOGIN_PATH}?${params.toString()}`
 }
 
+/**
+ * Escape HTML entities to prevent XSS attacks
+ */
+function escapeHtml(text: string): string {
+  const htmlEscapes: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    '\'': '&#39;',
+  }
+  return text.replace(/[&<>"']/g, char => htmlEscapes[char])
+}
+
 export function format(text: string) {
   let res = text.trim()
   if (res.startsWith('\n'))
     res = res.replace('\n', '')
 
-  return res.replaceAll('\n', '<br/>').replaceAll('```', '')
+  // Escape HTML entities first to prevent XSS, then convert newlines to <br/>
+  return escapeHtml(res).replaceAll('\n', '<br/>').replaceAll('```', '')
 }
 
 export const handleStream = (
