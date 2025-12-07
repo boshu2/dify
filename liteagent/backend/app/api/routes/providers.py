@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.exceptions import ProviderNotFoundError
 from app.services.provider_service import ProviderService
 from app.schemas.provider import (
     LLMProviderCreate,
@@ -43,7 +44,7 @@ async def get_provider(
     service = ProviderService(db)
     provider = await service.get_by_id(provider_id)
     if not provider:
-        raise HTTPException(status_code=404, detail="Provider not found")
+        raise ProviderNotFoundError(provider_id).to_http_exception()
     return provider
 
 
@@ -57,7 +58,7 @@ async def update_provider(
     service = ProviderService(db)
     provider = await service.update(provider_id, data)
     if not provider:
-        raise HTTPException(status_code=404, detail="Provider not found")
+        raise ProviderNotFoundError(provider_id).to_http_exception()
     return provider
 
 
@@ -70,5 +71,5 @@ async def delete_provider(
     service = ProviderService(db)
     success = await service.delete(provider_id)
     if not success:
-        raise HTTPException(status_code=404, detail="Provider not found")
+        raise ProviderNotFoundError(provider_id).to_http_exception()
     return {"status": "deleted"}

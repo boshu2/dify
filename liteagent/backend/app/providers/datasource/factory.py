@@ -2,6 +2,7 @@ from app.providers.datasource.base import BaseDataSourceProvider
 from app.providers.datasource.file_provider import FileDataSourceProvider
 from app.providers.datasource.url_provider import URLDataSourceProvider
 from app.providers.datasource.text_provider import TextDataSourceProvider
+from app.providers.datasource.gitlab_provider import GitLabDataSourceProvider
 from app.schemas.datasource import DataSourceType
 
 
@@ -12,6 +13,7 @@ class DataSourceFactory:
         DataSourceType.FILE: FileDataSourceProvider,
         DataSourceType.URL: URLDataSourceProvider,
         DataSourceType.TEXT: TextDataSourceProvider,
+        DataSourceType.GITLAB: GitLabDataSourceProvider,
     }
 
     @classmethod

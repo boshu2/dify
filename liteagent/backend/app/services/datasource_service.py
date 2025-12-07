@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.datasource import DataSource, DataSourceType
 from app.schemas.datasource import DataSourceCreate, DataSourceUpdate
+from app.schemas.datasource import DataSourceType as SchemaDataSourceType
 from app.providers.datasource import DataSourceFactory
 
 
@@ -13,18 +14,32 @@ class DataSourceService:
         self.db = db
 
     async def create(self, data: DataSourceCreate) -> DataSource:
-        # Fetch content if it's a URL type
         content = data.content
-        if data.source_type == DataSourceType.URL and data.source_path:
-            provider = DataSourceFactory.create(DataSourceType.URL)
+        source_type = DataSourceType(data.source_type.value)
+
+        # Fetch content based on source type
+        if source_type == DataSourceType.URL and data.source_path:
+            provider = DataSourceFactory.create(SchemaDataSourceType.URL)
+            result = await provider.fetch_content(data.source_path)
+            content = result.content
+
+        elif source_type == DataSourceType.GITLAB and data.source_path:
+            # Create GitLab provider with credentials
+            provider = DataSourceFactory.create(
+                SchemaDataSourceType.GITLAB,
+                gitlab_url=data.gitlab_url or "https://gitlab.com",
+                access_token=data.gitlab_token or "",
+            )
             result = await provider.fetch_content(data.source_path)
             content = result.content
 
         datasource = DataSource(
             name=data.name,
-            source_type=DataSourceType(data.source_type.value),
+            source_type=source_type,
             content=content,
             source_path=data.source_path,
+            gitlab_url=data.gitlab_url if source_type == DataSourceType.GITLAB else None,
+            gitlab_token=data.gitlab_token if source_type == DataSourceType.GITLAB else None,
         )
         self.db.add(datasource)
         await self.db.commit()
@@ -74,14 +89,27 @@ class DataSourceService:
         return True
 
     async def refresh_content(self, datasource_id: str) -> DataSource | None:
-        """Re-fetch content for URL data sources."""
+        """Re-fetch content for URL or GitLab data sources."""
         datasource = await self.get_by_id(datasource_id)
-        if not datasource or datasource.source_type != DataSourceType.URL:
+        if not datasource:
             return None
 
-        provider = DataSourceFactory.create(DataSourceType.URL)
-        result = await provider.fetch_content(datasource.source_path)
-        datasource.content = result.content
+        if datasource.source_type == DataSourceType.URL:
+            provider = DataSourceFactory.create(SchemaDataSourceType.URL)
+            result = await provider.fetch_content(datasource.source_path)
+            datasource.content = result.content
+
+        elif datasource.source_type == DataSourceType.GITLAB:
+            provider = DataSourceFactory.create(
+                SchemaDataSourceType.GITLAB,
+                gitlab_url=datasource.gitlab_url or "https://gitlab.com",
+                access_token=datasource.gitlab_token or "",
+            )
+            result = await provider.fetch_content(datasource.source_path)
+            datasource.content = result.content
+
+        else:
+            return None
 
         await self.db.commit()
         await self.db.refresh(datasource)
