@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: liteagent
+  labels:
+    app.kubernetes.io/name: liteagent
+    app.kubernetes.io/instance: production
