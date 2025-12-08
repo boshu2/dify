@@ -2,8 +2,8 @@
 Streaming support for LLM providers.
 Handles processing of streaming responses from LLM APIs.
 """
-from dataclasses import dataclass, field
-from typing import Any, AsyncIterator
+from dataclasses import dataclass
+from typing import AsyncIterator
 
 
 @dataclass

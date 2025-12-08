@@ -3,7 +3,7 @@ Server-Sent Events (SSE) streaming support for LiteAgent.
 Provides utilities for streaming chat responses to clients.
 """
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any, AsyncIterator
 

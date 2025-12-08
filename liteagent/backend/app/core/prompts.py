@@ -6,7 +6,6 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from string import Template
 from typing import Any
 
 
@@ -299,7 +298,11 @@ class PromptRegistry:
 SYSTEM_PROMPTS = {
     "helpful_assistant": PromptTemplate(
         name="helpful_assistant",
-        template="You are a helpful AI assistant. Your goal is to assist users with their questions and tasks in a clear, accurate, and friendly manner.",
+        template=(
+            "You are a helpful AI assistant. Your goal is to assist users "
+            "with their questions and tasks in a clear, accurate, and "
+            "friendly manner."
+        ),
         description="Basic helpful assistant system prompt",
         version="1.0.0",
     ),
@@ -330,7 +333,8 @@ Current context: {context}""",
     ),
     "qa_assistant": PromptTemplate(
         name="qa_assistant",
-        template="""You are a question-answering assistant. Answer questions based on the provided context.
+        template="""You are a question-answering assistant.
+Answer questions based on the provided context.
 
 Context:
 {context}

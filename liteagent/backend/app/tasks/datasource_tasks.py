@@ -28,7 +28,6 @@ def refresh_datasource(self, datasource_id: str) -> dict:
 
     try:
         # Import here to avoid circular imports
-        from app.services.datasource_service import DataSourceService
 
         # This would be sync version or run in executor
         # service = DataSourceService()

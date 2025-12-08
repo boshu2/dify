@@ -7,7 +7,6 @@ from app.schemas.datasource import (
     DataSourceCreate,
     DataSourceUpdate,
     DataSourceResponse,
-    DataSourceType,
 )
 from app.providers.datasource import FileDataSourceProvider
 
@@ -44,7 +43,6 @@ async def upload_file(
     result = await file_provider.fetch_content(filename)
 
     # Create data source record
-    service = DataSourceService(db)
     from app.models.datasource import DataSource, DataSourceType as DSType
 
     datasource = DataSource(

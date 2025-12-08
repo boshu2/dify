@@ -46,7 +46,7 @@ class HealthCheckResult:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
-        result = {
+        result: dict[str, Any] = {
             "name": self.name,
             "status": self.status.value,
             "checked_at": self.checked_at.isoformat(),
@@ -298,7 +298,10 @@ class CompositeHealthCheck(HealthCheck):
                 check_results.append(result.to_dict())
                 if result.status == HealthStatus.UNHEALTHY:
                     overall_status = HealthStatus.UNHEALTHY
-                elif result.status == HealthStatus.DEGRADED and overall_status == HealthStatus.HEALTHY:
+                elif (
+                    result.status == HealthStatus.DEGRADED
+                    and overall_status == HealthStatus.HEALTHY
+                ):
                     overall_status = HealthStatus.DEGRADED
 
         return HealthCheckResult(

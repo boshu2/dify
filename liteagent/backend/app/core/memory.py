@@ -32,7 +32,7 @@ class Message:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to API-compatible dictionary."""
-        result = {
+        result: dict[str, Any] = {
             "role": self.role.value,
             "content": self.content,
         }

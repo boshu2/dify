@@ -8,7 +8,7 @@ import hashlib
 import time
 import asyncio
 from collections import OrderedDict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -208,7 +208,11 @@ class InMemoryCache:
             "max_size": self.config.max_size,
             "hits": self._hits,
             "misses": self._misses,
-            "hit_rate": self._hits / (self._hits + self._misses) if (self._hits + self._misses) > 0 else 0,
+            "hit_rate": (
+                self._hits / (self._hits + self._misses)
+                if (self._hits + self._misses) > 0
+                else 0
+            ),
         }
 
 

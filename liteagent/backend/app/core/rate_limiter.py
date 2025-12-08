@@ -5,7 +5,7 @@ Uses token bucket algorithm for efficient rate limiting.
 import os
 import time
 import asyncio
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 

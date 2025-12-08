@@ -3,7 +3,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.agent import Agent
-from app.models.datasource import DataSource
 from app.schemas.agent import AgentCreate, AgentUpdate, ChatRequest, ChatResponse
 from app.services.provider_service import ProviderService
 from app.services.datasource_service import DataSourceService

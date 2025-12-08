@@ -4,8 +4,8 @@ Provides resilient request handling for external API calls.
 """
 import asyncio
 import random
-from dataclasses import dataclass, field
-from typing import Any, Callable, TypeVar
+from dataclasses import dataclass
+from typing import Callable, TypeVar
 
 T = TypeVar("T")
 
@@ -154,7 +154,6 @@ async def retry_with_backoff(
         retryable_exceptions=RETRYABLE_EXCEPTIONS,
     )
 
-    last_error: Exception | None = None
     attempts = 0
 
     while True:
@@ -162,7 +161,6 @@ async def retry_with_backoff(
             return await func()
         except Exception as e:
             attempts += 1
-            last_error = e
 
             if not strategy.should_retry(e, attempts - 1):
                 if not is_retryable_error(e):

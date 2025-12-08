@@ -3,7 +3,6 @@ from fastapi import APIRouter
 from app.providers.llm import LLMProviderFactory
 from app.providers.datasource import DataSourceFactory
 from app.schemas.provider import ProviderType
-from app.schemas.datasource import DataSourceType
 
 router = APIRouter()
 

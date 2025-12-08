@@ -33,7 +33,7 @@ class ProviderService:
     async def get_all(self, active_only: bool = False) -> list[LLMProvider]:
         query = select(LLMProvider)
         if active_only:
-            query = query.where(LLMProvider.is_active == True)
+            query = query.where(LLMProvider.is_active.is_(True))
         query = query.order_by(LLMProvider.created_at.desc())
         result = await self.db.execute(query)
         return list(result.scalars().all())

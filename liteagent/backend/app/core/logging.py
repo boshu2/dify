@@ -9,7 +9,7 @@ import logging
 import threading
 from datetime import datetime, timezone
 from typing import Any, IO
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from contextvars import ContextVar
 
 
