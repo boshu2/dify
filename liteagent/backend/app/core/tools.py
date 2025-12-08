@@ -2,8 +2,8 @@
 Tool/Function calling system for LLM agents.
 Provides OpenAI-compatible function definitions and execution.
 """
-import json
 import inspect
+import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
@@ -415,8 +415,8 @@ class GetCurrentTimeTool(Tool):
         )
 
     async def execute(self, timezone: str = "UTC") -> dict[str, str]:
-        from datetime import datetime
         import zoneinfo
+        from datetime import datetime
 
         try:
             tz = zoneinfo.ZoneInfo(timezone)

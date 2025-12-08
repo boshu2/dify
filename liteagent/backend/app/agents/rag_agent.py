@@ -14,7 +14,7 @@ from app.agents.twelve_factor_agent import (
     LLMClient,
     ToolDefinition,
 )
-from app.rag.retriever import Retriever, RetrievalResult
+from app.rag.retriever import RetrievalResult, Retriever
 from app.rag.vector_store import Document
 
 

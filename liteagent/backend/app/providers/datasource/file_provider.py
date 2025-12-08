@@ -1,5 +1,6 @@
-import aiofiles
 from pathlib import Path
+
+import aiofiles
 
 from app.providers.datasource.base import BaseDataSourceProvider, DataSourceContent
 

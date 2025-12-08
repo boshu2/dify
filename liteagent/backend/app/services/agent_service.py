@@ -3,11 +3,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.agent import Agent
+from app.providers.llm import LLMMessage, LLMProviderFactory
 from app.schemas.agent import AgentCreate, AgentUpdate, ChatRequest, ChatResponse
-from app.services.provider_service import ProviderService
-from app.services.datasource_service import DataSourceService
-from app.providers.llm import LLMProviderFactory, LLMMessage
 from app.schemas.provider import ProviderType
+from app.services.datasource_service import DataSourceService
+from app.services.provider_service import ProviderService
 
 
 class AgentService:

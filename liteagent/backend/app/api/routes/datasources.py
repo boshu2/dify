@@ -1,14 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.services.datasource_service import DataSourceService
+from app.providers.datasource import FileDataSourceProvider
 from app.schemas.datasource import (
     DataSourceCreate,
-    DataSourceUpdate,
     DataSourceResponse,
+    DataSourceUpdate,
 )
-from app.providers.datasource import FileDataSourceProvider
+from app.services.datasource_service import DataSourceService
 
 router = APIRouter()
 
@@ -43,7 +43,8 @@ async def upload_file(
     result = await file_provider.fetch_content(filename)
 
     # Create data source record
-    from app.models.datasource import DataSource, DataSourceType as DSType
+    from app.models.datasource import DataSource
+    from app.models.datasource import DataSourceType as DSType
 
     datasource = DataSource(
         name=name,

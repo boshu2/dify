@@ -2,16 +2,15 @@
 Structured logging and metrics collection for LiteAgent.
 Provides JSON-formatted logs for production and text logs for development.
 """
-import os
-import sys
 import json
 import logging
+import os
+import sys
 import threading
-from datetime import datetime, timezone
-from typing import Any, IO
-from dataclasses import dataclass
 from contextvars import ContextVar
-
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import IO, Any
 
 # Context variable for log context
 _log_context: ContextVar[dict[str, Any]] = ContextVar("log_context", default={})

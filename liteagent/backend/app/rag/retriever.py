@@ -6,15 +6,15 @@ Supports:
 - BM25 keyword search (without embeddings)
 - Hybrid search (combining both)
 """
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Any
 import math
 import re
+from abc import ABC, abstractmethod
 from collections import Counter
+from dataclasses import dataclass, field
+from typing import Any
 
-from app.rag.vector_store import VectorStore, Document, SearchResult
 from app.rag.embeddings import EmbeddingProvider
+from app.rag.vector_store import Document, SearchResult, VectorStore
 
 
 @dataclass

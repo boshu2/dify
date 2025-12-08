@@ -1,7 +1,8 @@
-from sqlalchemy import Column, String, Text, DateTime, Enum
-from sqlalchemy.sql import func
-import uuid
 import enum
+import uuid
+
+from sqlalchemy import Column, DateTime, Enum, String, Text
+from sqlalchemy.sql import func
 
 from app.core.database import Base
 

@@ -2,9 +2,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.datasource import DataSource, DataSourceType
+from app.providers.datasource import DataSourceFactory
 from app.schemas.datasource import DataSourceCreate, DataSourceUpdate
 from app.schemas.datasource import DataSourceType as SchemaDataSourceType
-from app.providers.datasource import DataSourceFactory
 
 
 class DataSourceService:

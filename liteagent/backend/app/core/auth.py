@@ -2,9 +2,9 @@
 Authentication system for LiteAgent API.
 Supports JWT tokens and API key authentication.
 """
+import hashlib
 import os
 import secrets
-import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any

@@ -1,10 +1,10 @@
-from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Table
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 import uuid
 
-from app.core.database import Base
+from sqlalchemy import Column, DateTime, ForeignKey, String, Table, Text
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
+from app.core.database import Base
 
 # Many-to-many relationship between agents and datasources
 agent_datasources = Table(

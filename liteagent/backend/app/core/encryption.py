@@ -3,8 +3,8 @@ Encryption service for securing sensitive data at rest.
 Uses Fernet symmetric encryption for API keys and tokens.
 """
 import base64
-import os
 import hashlib
+import os
 
 from cryptography.fernet import Fernet, InvalidToken
 

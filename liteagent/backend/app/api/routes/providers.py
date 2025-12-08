@@ -3,12 +3,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.exceptions import ProviderNotFoundError
-from app.services.provider_service import ProviderService
 from app.schemas.provider import (
     LLMProviderCreate,
-    LLMProviderUpdate,
     LLMProviderResponse,
+    LLMProviderUpdate,
 )
+from app.services.provider_service import ProviderService
 
 router = APIRouter()
 

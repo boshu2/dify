@@ -6,11 +6,11 @@ Supports:
 - Semantic chunking (sentence-aware)
 - Recursive chunking for structured documents
 """
+import re
+import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
-import re
-import uuid
 
 from app.rag.vector_store import Document
 

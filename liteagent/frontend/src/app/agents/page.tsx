@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, MessageSquare, Bot } from "lucide-react";
 import { Header } from "@/components/header";
@@ -13,12 +14,11 @@ import {
   Modal,
 } from "@/components/ui";
 import { agentsAPI, providersAPI, datasourcesAPI } from "@/lib/api";
-import type { Agent, AgentCreate, ChatMessage } from "@/types";
+import type { AgentCreate } from "@/types";
 
 export default function AgentsPage() {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [chatAgent, setChatAgent] = useState<Agent | null>(null);
 
   // Queries
   const { data: agents = [], isLoading } = useQuery({
@@ -145,14 +145,12 @@ export default function AgentsPage() {
                   </div>
                 )}
 
-                <Button
-                  className="w-full"
-                  variant="secondary"
-                  onClick={() => setChatAgent(agent)}
-                >
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  Chat
-                </Button>
+                <Link href={`/chat/${agent.id}`}>
+                  <Button className="w-full" variant="secondary">
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    Chat
+                  </Button>
+                </Link>
               </Card>
             ))}
           </div>
@@ -167,14 +165,6 @@ export default function AgentsPage() {
           datasources={datasources}
           isLoading={createMutation.isPending}
         />
-
-        {/* Chat Modal */}
-        {chatAgent && (
-          <ChatModal
-            agent={chatAgent}
-            onClose={() => setChatAgent(null)}
-          />
-        )}
       </main>
     </div>
   );
@@ -301,100 +291,3 @@ function AgentModal({
   );
 }
 
-interface ChatModalProps {
-  agent: Agent;
-  onClose: () => void;
-}
-
-function ChatModal({ agent, onClose }: ChatModalProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
-
-  const chatMutation = useMutation({
-    mutationFn: (message: string) =>
-      agentsAPI.chat(agent.id, {
-        message,
-        conversation_history: messages,
-      }),
-    onSuccess: (response) => {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: response.response },
-      ]);
-    },
-  });
-
-  const handleSend = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || chatMutation.isPending) return;
-
-    const userMessage: ChatMessage = { role: "user", content: input };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    chatMutation.mutate(input);
-  };
-
-  return (
-    <Modal
-      isOpen={true}
-      onClose={onClose}
-      title={`Chat with ${agent.name}`}
-      className="max-w-2xl h-[80vh] flex flex-col"
-    >
-      {/* Messages */}
-      <div className="flex-1 overflow-auto space-y-4 mb-4 min-h-[300px]">
-        {messages.length === 0 && (
-          <p className="text-center text-gray-500 dark:text-gray-400 py-8">
-            Start a conversation with {agent.name}
-          </p>
-        )}
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            <div
-              className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                msg.role === "user"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white"
-              }`}
-            >
-              <p className="whitespace-pre-wrap">{msg.content}</p>
-            </div>
-          </div>
-        ))}
-        {chatMutation.isPending && (
-          <div className="flex justify-start">
-            <div className="bg-gray-100 dark:bg-gray-700 rounded-lg px-4 py-2">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.1s]" />
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-              </div>
-            </div>
-          </div>
-        )}
-        {chatMutation.isError && (
-          <div className="text-center text-red-500 py-2">
-            Error: {(chatMutation.error as Error).message}
-          </div>
-        )}
-      </div>
-
-      {/* Input */}
-      <form onSubmit={handleSend} className="flex gap-2">
-        <Input
-          className="flex-1"
-          placeholder="Type your message..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          disabled={chatMutation.isPending}
-        />
-        <Button type="submit" loading={chatMutation.isPending}>
-          Send
-        </Button>
-      </form>
-    </Modal>
-  );
-}

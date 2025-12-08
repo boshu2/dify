@@ -5,11 +5,11 @@ Supports:
 - NVIDIA Nemotron embeddings (via NIM API)
 - No-embedding mode (for BM25/keyword search)
 """
+import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any
+
 import httpx
-import os
 
 
 @dataclass

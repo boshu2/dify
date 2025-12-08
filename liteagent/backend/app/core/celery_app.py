@@ -3,6 +3,7 @@ Celery application configuration for background jobs.
 Uses Redis as broker and result backend.
 """
 import os
+
 from celery import Celery
 from kombu import Queue
 

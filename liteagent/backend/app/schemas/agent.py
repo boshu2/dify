@@ -1,9 +1,10 @@
-from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
 
-from app.schemas.provider import LLMProviderResponse
+from pydantic import BaseModel
+
 from app.schemas.datasource import DataSourceResponse
+from app.schemas.provider import LLMProviderResponse
 
 
 class AgentBase(BaseModel):

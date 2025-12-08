@@ -17,13 +17,13 @@ The 12 Factors:
 11. Trigger from Anywhere - Multiple entry points
 12. Stateless Reducer - Pure function transforming state
 """
+import hashlib
+import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Callable, TypeVar
-import json
-import hashlib
+from typing import Any, Callable
 
 
 class AgentStatus(str, Enum):

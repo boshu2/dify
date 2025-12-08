@@ -5,12 +5,12 @@ Supports:
 - pgvector (PostgreSQL with vector extension)
 - In-memory (for testing)
 """
+import json
+import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
-import json
-import uuid
 
 
 @dataclass

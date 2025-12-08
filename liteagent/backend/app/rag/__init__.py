@@ -1,8 +1,8 @@
 """RAG (Retrieval-Augmented Generation) pipeline."""
+from app.rag.chunker import SemanticChunker, TextChunker
 from app.rag.embeddings import EmbeddingProvider, NemotronEmbedder, NoEmbedder
-from app.rag.retriever import Retriever, HybridRetriever
-from app.rag.vector_store import VectorStore, PgVectorStore
-from app.rag.chunker import TextChunker, SemanticChunker
+from app.rag.retriever import HybridRetriever, Retriever
+from app.rag.vector_store import PgVectorStore, VectorStore
 
 __all__ = [
     "EmbeddingProvider",

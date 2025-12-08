@@ -3,6 +3,7 @@ OpenAI-compatible provider for custom endpoints.
 Supports Azure OpenAI, vLLM, LiteLLM proxy, and any OpenAI-compatible API.
 """
 from typing import AsyncIterator
+
 from openai import AsyncOpenAI
 
 from app.providers.llm.base import BaseLLMProvider, LLMMessage, LLMResponse
