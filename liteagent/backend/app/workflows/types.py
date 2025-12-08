@@ -21,6 +21,10 @@ class NodeType(str, Enum):
     HUMAN = "human"  # Human checkpoint
     TRANSFORM = "transform"  # Data transformation
     WAIT = "wait"  # Wait for external event
+    HTTP_REQUEST = "http_request"  # HTTP API calls
+    LLM = "llm"  # Direct LLM invocation
+    CODE = "code"  # Code execution
+    KNOWLEDGE_RETRIEVAL = "knowledge_retrieval"  # RAG retrieval
 
 
 class WorkflowStatus(str, Enum):

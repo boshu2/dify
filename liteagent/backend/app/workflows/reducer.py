@@ -22,6 +22,10 @@ from app.workflows.handlers import (
     ConditionNodeHandler,
     TransformNodeHandler,
     HumanNodeHandler,
+    HTTPRequestNodeHandler,
+    LLMNodeHandler,
+    CodeNodeHandler,
+    KnowledgeRetrievalNodeHandler,
 )
 
 
@@ -41,6 +45,10 @@ class WorkflowReducer:
             NodeType.CONDITION: ConditionNodeHandler(),
             NodeType.TRANSFORM: TransformNodeHandler(),
             NodeType.HUMAN: HumanNodeHandler(),
+            NodeType.HTTP_REQUEST: HTTPRequestNodeHandler(),
+            NodeType.LLM: LLMNodeHandler(),
+            NodeType.CODE: CodeNodeHandler(),
+            NodeType.KNOWLEDGE_RETRIEVAL: KnowledgeRetrievalNodeHandler(),
         }
 
     def register_handler(self, node_type: NodeType, handler: NodeHandler) -> None:

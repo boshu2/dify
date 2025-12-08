@@ -401,3 +401,231 @@ class InMemoryVectorStore(VectorStore):
 
     async def get(self, document_id: str) -> Document | None:
         return self._documents.get(document_id)
+
+
+class QdrantVectorStore(VectorStore):
+    """
+    Qdrant vector store implementation.
+
+    Supports both:
+    - In-memory mode (for testing/development)
+    - Server mode (for production with remote Qdrant server)
+    """
+
+    def __init__(
+        self,
+        collection_name: str = "documents",
+        embedding_dimension: int = 4096,
+        host: str | None = None,
+        port: int = 6333,
+        url: str | None = None,
+        api_key: str | None = None,
+        in_memory: bool = False,
+    ):
+        """
+        Initialize Qdrant vector store.
+
+        Args:
+            collection_name: Name of the collection to use.
+            embedding_dimension: Dimension of embeddings.
+            host: Qdrant server host (for server mode).
+            port: Qdrant server port (default 6333).
+            url: Full URL to Qdrant server (alternative to host/port).
+            api_key: API key for Qdrant Cloud.
+            in_memory: Use in-memory storage (for testing).
+        """
+        self.collection_name = collection_name
+        self.embedding_dimension = embedding_dimension
+        self.host = host
+        self.port = port
+        self.url = url
+        self.api_key = api_key
+        self.in_memory = in_memory
+        self._client = None
+
+    def _get_client(self):
+        """Get or create Qdrant client."""
+        if self._client is None:
+            from qdrant_client import QdrantClient
+
+            if self.in_memory:
+                self._client = QdrantClient(":memory:")
+            elif self.url:
+                self._client = QdrantClient(url=self.url, api_key=self.api_key)
+            elif self.host:
+                self._client = QdrantClient(host=self.host, port=self.port, api_key=self.api_key)
+            else:
+                # Default to in-memory
+                self._client = QdrantClient(":memory:")
+
+        return self._client
+
+    async def initialize(self) -> None:
+        """
+        Initialize the vector store.
+        Creates collection if it doesn't exist.
+        """
+        from qdrant_client.models import Distance, VectorParams
+
+        client = self._get_client()
+
+        # Check if collection exists
+        collections = client.get_collections().collections
+        exists = any(c.name == self.collection_name for c in collections)
+
+        if not exists:
+            client.create_collection(
+                collection_name=self.collection_name,
+                vectors_config=VectorParams(
+                    size=self.embedding_dimension,
+                    distance=Distance.COSINE,
+                ),
+            )
+
+    async def add_documents(self, documents: list[Document]) -> list[str]:
+        """Add documents to Qdrant."""
+        if not documents:
+            return []
+
+        from qdrant_client.models import PointStruct
+
+        client = self._get_client()
+        points = []
+        ids = []
+
+        for doc in documents:
+            doc_id = doc.id or str(uuid.uuid4())
+            ids.append(doc_id)
+
+            # Create payload with content and metadata
+            payload = {
+                "content": doc.content,
+                "created_at": doc.created_at.isoformat() if doc.created_at else None,
+                **doc.metadata,
+            }
+
+            if doc.embedding:
+                points.append(
+                    PointStruct(
+                        id=doc_id,
+                        vector=doc.embedding,
+                        payload=payload,
+                    )
+                )
+
+        if points:
+            client.upsert(collection_name=self.collection_name, points=points)
+
+        return ids
+
+    async def search(
+        self,
+        query_embedding: list[float],
+        limit: int = 10,
+        filter: dict[str, Any] | None = None,
+    ) -> list[SearchResult]:
+        """Search for similar documents in Qdrant."""
+        if not query_embedding:
+            return []
+
+        from qdrant_client.models import Filter, FieldCondition, MatchValue
+
+        client = self._get_client()
+
+        # Build filter if provided
+        qdrant_filter = None
+        if filter:
+            conditions = []
+            for key, value in filter.items():
+                conditions.append(
+                    FieldCondition(
+                        key=key,
+                        match=MatchValue(value=value),
+                    )
+                )
+            qdrant_filter = Filter(must=conditions)
+
+        # Perform search using query_points (new API)
+        results = client.query_points(
+            collection_name=self.collection_name,
+            query=query_embedding,
+            limit=limit,
+            query_filter=qdrant_filter,
+            with_payload=True,
+        )
+
+        # Convert to SearchResult objects
+        search_results = []
+        for i, hit in enumerate(results.points):
+            payload = hit.payload or {}
+            doc = Document(
+                id=str(hit.id),
+                content=payload.get("content", ""),
+                embedding=None,  # Don't return embeddings in search
+                metadata={k: v for k, v in payload.items() if k not in ("content", "created_at")},
+                created_at=datetime.fromisoformat(payload["created_at"])
+                if payload.get("created_at")
+                else datetime.now(timezone.utc),
+            )
+            search_results.append(
+                SearchResult(
+                    document=doc,
+                    score=hit.score,
+                    rank=i + 1,
+                )
+            )
+
+        return search_results
+
+    async def delete(self, document_ids: list[str]) -> int:
+        """Delete documents from Qdrant by ID."""
+        if not document_ids:
+            return 0
+
+        from qdrant_client.models import PointIdsList
+
+        client = self._get_client()
+
+        # Delete points
+        client.delete(
+            collection_name=self.collection_name,
+            points_selector=PointIdsList(points=document_ids),
+        )
+
+        return len(document_ids)
+
+    async def get(self, document_id: str) -> Document | None:
+        """Get a document by ID from Qdrant."""
+        client = self._get_client()
+
+        try:
+            results = client.retrieve(
+                collection_name=self.collection_name,
+                ids=[document_id],
+                with_payload=True,
+                with_vectors=True,
+            )
+
+            if not results:
+                return None
+
+            point = results[0]
+            payload = point.payload or {}
+
+            return Document(
+                id=str(point.id),
+                content=payload.get("content", ""),
+                embedding=point.vector if point.vector else None,
+                metadata={k: v for k, v in payload.items() if k not in ("content", "created_at")},
+                created_at=datetime.fromisoformat(payload["created_at"])
+                if payload.get("created_at")
+                else datetime.now(timezone.utc),
+            )
+        except Exception:
+            return None
+
+    async def close(self) -> None:
+        """Close the Qdrant client."""
+        if self._client:
+            self._client.close()
+            self._client = None
