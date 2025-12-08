@@ -16,214 +16,24 @@ The 12 Factors:
 10. Small, Focused Agents - Single-purpose agents
 11. Trigger from Anywhere - Multiple entry points
 12. Stateless Reducer - Pure function transforming state
+
+This module contains the core Agent class and configuration.
+Types, state, and prompts are in separate modules.
 """
-import hashlib
 import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
 from typing import Any, Callable
 
-
-class AgentStatus(str, Enum):
-    """Agent execution status."""
-    IDLE = "idle"
-    RUNNING = "running"
-    PAUSED = "paused"  # Factor 6: Pause capability
-    WAITING_HUMAN = "waiting_human"  # Factor 7: Human contact
-    COMPLETED = "completed"
-    FAILED = "failed"
-
-
-class StepType(str, Enum):
-    """Types of agent steps."""
-    USER_MESSAGE = "user_message"
-    ASSISTANT_MESSAGE = "assistant_message"
-    TOOL_CALL = "tool_call"
-    TOOL_RESULT = "tool_result"
-    HUMAN_REQUEST = "human_request"  # Factor 7
-    HUMAN_RESPONSE = "human_response"
-    ERROR = "error"
-
-
-@dataclass
-class AgentStep:
-    """
-    A single step in agent execution.
-    Factor 5: All execution state is captured in steps.
-    """
-    step_type: StepType
-    content: Any
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    metadata: dict[str, Any] = field(default_factory=dict)
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "step_type": self.step_type.value,
-            "content": self.content,
-            "timestamp": self.timestamp.isoformat(),
-            "metadata": self.metadata,
-        }
-
-
-@dataclass
-class AgentState:
-    """
-    Complete agent state - can be serialized and restored.
-    Factor 5: Unified execution and business state.
-    Factor 6: Enables pause/resume.
-    Factor 12: Input to stateless reducer.
-    """
-    agent_id: str
-    status: AgentStatus = AgentStatus.IDLE
-    steps: list[AgentStep] = field(default_factory=list)
-    current_iteration: int = 0
-    max_iterations: int = 10
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    metadata: dict[str, Any] = field(default_factory=dict)
-
-    def add_step(self, step: AgentStep) -> None:
-        """Add a step to execution history."""
-        self.steps.append(step)
-
-    def get_context_messages(self) -> list[dict[str, Any]]:
-        """
-        Factor 3: Own your context window.
-        Convert steps to LLM message format.
-        """
-        messages = []
-        for step in self.steps:
-            if step.step_type == StepType.USER_MESSAGE:
-                messages.append({"role": "user", "content": step.content})
-            elif step.step_type == StepType.ASSISTANT_MESSAGE:
-                messages.append({"role": "assistant", "content": step.content})
-            elif step.step_type == StepType.TOOL_CALL:
-                messages.append({
-                    "role": "assistant",
-                    "content": None,
-                    "tool_calls": [step.content],
-                })
-            elif step.step_type == StepType.TOOL_RESULT:
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": step.content.get("tool_call_id"),
-                    "content": json.dumps(step.content.get("result", {})),
-                })
-            elif step.step_type == StepType.ERROR:
-                # Factor 9: Compact errors into context
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": step.content.get("tool_call_id", "error"),
-                    "content": f"Error: {step.content.get('error', 'Unknown error')}",
-                })
-        return messages
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize state for persistence."""
-        return {
-            "agent_id": self.agent_id,
-            "status": self.status.value,
-            "steps": [s.to_dict() for s in self.steps],
-            "current_iteration": self.current_iteration,
-            "max_iterations": self.max_iterations,
-            "created_at": self.created_at.isoformat(),
-            "metadata": self.metadata,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "AgentState":
-        """Deserialize state for resume."""
-        state = cls(
-            agent_id=data["agent_id"],
-            status=AgentStatus(data["status"]),
-            current_iteration=data["current_iteration"],
-            max_iterations=data["max_iterations"],
-            metadata=data.get("metadata", {}),
-        )
-        for step_data in data.get("steps", []):
-            state.steps.append(AgentStep(
-                step_type=StepType(step_data["step_type"]),
-                content=step_data["content"],
-                metadata=step_data.get("metadata", {}),
-            ))
-        return state
-
-    def compute_hash(self) -> str:
-        """Compute hash for state comparison."""
-        content = json.dumps(self.to_dict(), sort_keys=True, default=str)
-        return hashlib.sha256(content.encode()).hexdigest()[:16]
-
-
-@dataclass
-class ToolDefinition:
-    """
-    Factor 4: Tools are structured outputs.
-    Definition of a tool the agent can call.
-    """
-    name: str
-    description: str
-    parameters: dict[str, Any]
-    handler: Callable[..., Any] | None = None
-    requires_human_approval: bool = False  # Factor 7
-
-    def to_openai_format(self) -> dict[str, Any]:
-        """Convert to OpenAI function format."""
-        return {
-            "type": "function",
-            "function": {
-                "name": self.name,
-                "description": self.description,
-                "parameters": self.parameters,
-            },
-        }
-
-
-@dataclass
-class HumanContactRequest:
-    """
-    Factor 7: Contact humans with tool calls.
-    Request for human input/approval.
-    """
-    request_id: str
-    request_type: str  # "approval", "input", "clarification"
-    message: str
-    context: dict[str, Any] = field(default_factory=dict)
-    timeout_seconds: int = 3600
-
-
-class AgentPrompts:
-    """
-    Factor 2: Own your prompts.
-    All prompts in one place, fully controllable.
-    """
-
-    @staticmethod
-    def system_prompt(agent_purpose: str, tools: list[ToolDefinition]) -> str:
-        tool_descriptions = "\n".join(
-            f"- {t.name}: {t.description}" for t in tools
-        )
-        return f"""You are an AI agent with a specific purpose: {agent_purpose}
-
-Available tools:
-{tool_descriptions}
-
-Instructions:
-1. Analyze the user's request carefully
-2. Break down complex tasks into steps
-3. Use tools when needed to accomplish tasks
-4. If you need human approval or input, use the request_human_input tool
-5. When the task is complete, provide a final response without tool calls
-
-Always think step-by-step before acting."""
-
-    @staticmethod
-    def error_context(error: str, tool_name: str) -> str:
-        """
-        Factor 9: Compact errors into context.
-        Keep error messages concise but informative.
-        """
-        return f"Tool '{tool_name}' failed: {error[:200]}"  # Truncate long errors
+from app.agents.types import (
+    AgentStatus,
+    AgentStep,
+    HumanContactRequest,
+    StepType,
+    ToolDefinition,
+)
+from app.agents.state import AgentState
+from app.agents.prompts import AgentPrompts
 
 
 class LLMClient(ABC):
@@ -564,3 +374,15 @@ class Agent:
                     break
 
         return state
+
+
+# Re-export for backward compatibility
+from app.agents.types import (  # noqa: E402, F401
+    AgentStatus,
+    StepType,
+    AgentStep,
+    ToolDefinition,
+    HumanContactRequest,
+)
+from app.agents.state import AgentState  # noqa: E402, F401
+from app.agents.prompts import AgentPrompts  # noqa: E402, F401

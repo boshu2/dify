@@ -536,7 +536,7 @@ class TestDistributedLockWithMockedRedis:
         mock_client.set.return_value = True
 
         with patch.object(
-            __import__("app.core.session_manager", fromlist=["redis_client"]),
+            __import__("app.core.distributed_lock", fromlist=["redis_client"]),
             "redis_client",
             mock_client,
         ):
@@ -553,7 +553,7 @@ class TestDistributedLockWithMockedRedis:
         mock_client.set.return_value = False
 
         with patch.object(
-            __import__("app.core.session_manager", fromlist=["redis_client"]),
+            __import__("app.core.distributed_lock", fromlist=["redis_client"]),
             "redis_client",
             mock_client,
         ):
@@ -568,7 +568,7 @@ class TestDistributedLockWithMockedRedis:
         mock_client = MagicMock()
 
         with patch.object(
-            __import__("app.core.session_manager", fromlist=["redis_client"]),
+            __import__("app.core.distributed_lock", fromlist=["redis_client"]),
             "redis_client",
             mock_client,
         ):
@@ -588,7 +588,7 @@ class TestDistributedLockWithMockedRedis:
         mock_client.set.return_value = False
 
         with patch.object(
-            __import__("app.core.session_manager", fromlist=["redis_client"]),
+            __import__("app.core.distributed_lock", fromlist=["redis_client"]),
             "redis_client",
             mock_client,
         ):
