@@ -629,3 +629,193 @@ class QdrantVectorStore(VectorStore):
         if self._client:
             self._client.close()
             self._client = None
+
+    async def add_documents_batch(
+        self,
+        documents: list[Document],
+        batch_size: int = 100,
+    ) -> list[str]:
+        """
+        Add documents in batches for better performance with large datasets.
+
+        Args:
+            documents: Documents to add.
+            batch_size: Number of documents per batch.
+
+        Returns:
+            List of document IDs.
+        """
+        if not documents:
+            return []
+
+        from qdrant_client.models import PointStruct
+
+        client = self._get_client()
+        all_ids = []
+
+        # Process in batches
+        for i in range(0, len(documents), batch_size):
+            batch = documents[i:i + batch_size]
+            points = []
+
+            for doc in batch:
+                doc_id = doc.id or str(uuid.uuid4())
+                all_ids.append(doc_id)
+
+                payload = {
+                    "content": doc.content,
+                    "created_at": doc.created_at.isoformat() if doc.created_at else None,
+                    **doc.metadata,
+                }
+
+                if doc.embedding:
+                    points.append(
+                        PointStruct(
+                            id=doc_id,
+                            vector=doc.embedding,
+                            payload=payload,
+                        )
+                    )
+
+            if points:
+                client.upsert(collection_name=self.collection_name, points=points)
+
+        return all_ids
+
+    async def search_batch(
+        self,
+        query_embeddings: list[list[float]],
+        limit: int = 10,
+        filter: dict[str, Any] | None = None,
+    ) -> list[list[SearchResult]]:
+        """
+        Search for multiple queries in a single batch operation.
+
+        Args:
+            query_embeddings: List of query vectors.
+            limit: Max results per query.
+            filter: Optional metadata filter.
+
+        Returns:
+            List of search results for each query.
+        """
+        if not query_embeddings:
+            return []
+
+        from qdrant_client.models import Filter, FieldCondition, MatchValue
+
+        client = self._get_client()
+
+        # Build filter if provided
+        qdrant_filter = None
+        if filter:
+            conditions = []
+            for key, value in filter.items():
+                conditions.append(
+                    FieldCondition(
+                        key=key,
+                        match=MatchValue(value=value),
+                    )
+                )
+            qdrant_filter = Filter(must=conditions)
+
+        # Batch search
+        batch_results = client.query_batch_points(
+            collection_name=self.collection_name,
+            requests=[
+                {"query": emb, "limit": limit, "filter": qdrant_filter, "with_payload": True}
+                for emb in query_embeddings
+            ],
+        )
+
+        # Convert to SearchResult objects
+        all_results = []
+        for query_results in batch_results:
+            search_results = []
+            for i, hit in enumerate(query_results.points):
+                payload = hit.payload or {}
+                doc = Document(
+                    id=str(hit.id),
+                    content=payload.get("content", ""),
+                    embedding=None,
+                    metadata={k: v for k, v in payload.items() if k not in ("content", "created_at")},
+                    created_at=datetime.fromisoformat(payload["created_at"])
+                    if payload.get("created_at")
+                    else datetime.now(timezone.utc),
+                )
+                search_results.append(
+                    SearchResult(
+                        document=doc,
+                        score=hit.score,
+                        rank=i + 1,
+                    )
+                )
+            all_results.append(search_results)
+
+        return all_results
+
+    async def count(self) -> int:
+        """Get the total number of documents in the collection."""
+        client = self._get_client()
+        info = client.get_collection(self.collection_name)
+        return info.points_count
+
+    async def scroll(
+        self,
+        limit: int = 100,
+        offset: str | None = None,
+        filter: dict[str, Any] | None = None,
+    ) -> tuple[list[Document], str | None]:
+        """
+        Scroll through all documents in the collection.
+
+        Args:
+            limit: Number of documents to retrieve.
+            offset: Offset ID from previous scroll (None for start).
+            filter: Optional metadata filter.
+
+        Returns:
+            Tuple of (documents, next_offset). next_offset is None if no more.
+        """
+        from qdrant_client.models import Filter, FieldCondition, MatchValue
+
+        client = self._get_client()
+
+        # Build filter if provided
+        qdrant_filter = None
+        if filter:
+            conditions = []
+            for key, value in filter.items():
+                conditions.append(
+                    FieldCondition(
+                        key=key,
+                        match=MatchValue(value=value),
+                    )
+                )
+            qdrant_filter = Filter(must=conditions)
+
+        results, next_offset = client.scroll(
+            collection_name=self.collection_name,
+            limit=limit,
+            offset=offset,
+            scroll_filter=qdrant_filter,
+            with_payload=True,
+            with_vectors=False,
+        )
+
+        documents = []
+        for point in results:
+            payload = point.payload or {}
+            documents.append(
+                Document(
+                    id=str(point.id),
+                    content=payload.get("content", ""),
+                    embedding=None,
+                    metadata={k: v for k, v in payload.items() if k not in ("content", "created_at")},
+                    created_at=datetime.fromisoformat(payload["created_at"])
+                    if payload.get("created_at")
+                    else datetime.now(timezone.utc),
+                )
+            )
+
+        return documents, next_offset
