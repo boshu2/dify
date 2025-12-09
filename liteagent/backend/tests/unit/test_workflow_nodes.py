@@ -445,3 +445,239 @@ class TestWorkflowReducerWithNewNodes:
             output = await reducer.execute_node(definition, state, "http-1", {})
 
             assert output["response"]["status_code"] == 200
+
+
+class TestLoopNodeHandler:
+    """Tests for Loop node handler."""
+
+    @pytest.fixture
+    def handler(self):
+        from app.workflows.handlers import LoopNodeHandler
+        return LoopNodeHandler()
+
+    @pytest.fixture
+    def state(self):
+        state = WorkflowState(workflow_id="test", execution_id="exec-1")
+        state.set_variable("items", [1, 2, 3, 4, 5])
+        return state
+
+    @pytest.mark.asyncio
+    async def test_basic_loop(self, handler, state):
+        """Test basic loop iteration."""
+        node = NodeDefinition(
+            id="loop-1",
+            type=NodeType.LOOP,
+            config={
+                "array_variable": "items",
+                "item_variable": "item",
+                "output_variable": "loop_results",
+            },
+        )
+
+        result = await handler.execute(node, state, {})
+
+        assert "loop_results" in result
+        assert result["loop_results"] == [1, 2, 3, 4, 5]
+        assert result["loop_metadata"]["iterations"] == 5
+
+    @pytest.mark.asyncio
+    async def test_loop_with_transform(self, handler, state):
+        """Test loop with transform code."""
+        node = NodeDefinition(
+            id="loop-1",
+            type=NodeType.LOOP,
+            config={
+                "array_variable": "items",
+                "item_variable": "item",
+                "output_variable": "doubled",
+                "transform": "result = item * 2",
+            },
+        )
+
+        result = await handler.execute(node, state, {})
+
+        assert result["doubled"] == [2, 4, 6, 8, 10]
+
+    @pytest.mark.asyncio
+    async def test_loop_with_break_condition(self, handler, state):
+        """Test loop with break condition."""
+        node = NodeDefinition(
+            id="loop-1",
+            type=NodeType.LOOP,
+            config={
+                "array_variable": "items",
+                "item_variable": "item",
+                "output_variable": "results",
+                "break_condition": "item > 3",
+            },
+        )
+
+        result = await handler.execute(node, state, {})
+
+        # Should break before processing items > 3
+        assert len(result["results"]) == 3  # 1, 2, 3
+
+    @pytest.mark.asyncio
+    async def test_loop_max_iterations(self, handler, state):
+        """Test loop respects max iterations."""
+        state.set_variable("items", list(range(100)))
+
+        node = NodeDefinition(
+            id="loop-1",
+            type=NodeType.LOOP,
+            config={
+                "array_variable": "items",
+                "max_iterations": 10,
+                "output_variable": "results",
+            },
+        )
+
+        result = await handler.execute(node, state, {})
+
+        assert len(result["results"]) == 10
+
+    @pytest.mark.asyncio
+    async def test_loop_non_iterable_error(self, handler, state):
+        """Test loop with non-iterable variable."""
+        state.set_variable("items", "not a list")
+
+        node = NodeDefinition(
+            id="loop-1",
+            type=NodeType.LOOP,
+            config={
+                "array_variable": "items",
+            },
+        )
+
+        result = await handler.execute(node, state, {})
+
+        assert "error" in result
+        assert result["loop_metadata"]["success"] is False
+
+
+class TestVariableAggregatorNodeHandler:
+    """Tests for Variable Aggregator node handler."""
+
+    @pytest.fixture
+    def handler(self):
+        from app.workflows.handlers import VariableAggregatorNodeHandler
+        return VariableAggregatorNodeHandler()
+
+    @pytest.fixture
+    def state(self):
+        state = WorkflowState(workflow_id="test", execution_id="exec-1")
+        state.set_variable("user", {"name": "Alice", "age": 30})
+        state.set_variable("address", {"city": "NYC", "zip": "10001"})
+        state.set_variable("list1", [1, 2, 3])
+        state.set_variable("list2", [4, 5, 6])
+        state.set_variable("nullable", None)
+        state.set_variable("value", "hello")
+        return state
+
+    @pytest.mark.asyncio
+    async def test_merge_dicts(self, handler, state):
+        """Test merging dictionaries."""
+        node = NodeDefinition(
+            id="agg-1",
+            type=NodeType.VARIABLE_AGGREGATOR,
+            config={
+                "input_variables": ["user", "address"],
+                "strategy": "merge",
+                "output_variable": "merged",
+            },
+        )
+
+        result = await handler.execute(node, state, {})
+
+        assert "merged" in result
+        assert result["merged"]["name"] == "Alice"
+        assert result["merged"]["city"] == "NYC"
+
+    @pytest.mark.asyncio
+    async def test_concat_arrays(self, handler, state):
+        """Test concatenating arrays."""
+        node = NodeDefinition(
+            id="agg-1",
+            type=NodeType.VARIABLE_AGGREGATOR,
+            config={
+                "input_variables": ["list1", "list2"],
+                "strategy": "concat",
+                "output_variable": "combined",
+            },
+        )
+
+        result = await handler.execute(node, state, {})
+
+        assert result["combined"] == [1, 2, 3, 4, 5, 6]
+
+    @pytest.mark.asyncio
+    async def test_first_non_null(self, handler, state):
+        """Test first non-null strategy."""
+        node = NodeDefinition(
+            id="agg-1",
+            type=NodeType.VARIABLE_AGGREGATOR,
+            config={
+                "input_variables": ["nullable", "value"],
+                "strategy": "first_non_null",
+                "output_variable": "result",
+            },
+        )
+
+        result = await handler.execute(node, state, {})
+
+        assert result["result"] == "hello"
+
+    @pytest.mark.asyncio
+    async def test_template_strategy(self, handler, state):
+        """Test template formatting."""
+        # Use simpler state for template test
+        simple_state = WorkflowState(workflow_id="test", execution_id="exec-1")
+        simple_state.set_variable("name", "Alice")
+        simple_state.set_variable("city", "NYC")
+
+        node = NodeDefinition(
+            id="agg-1",
+            type=NodeType.VARIABLE_AGGREGATOR,
+            config={
+                "input_variables": ["name", "city"],
+                "strategy": "template",
+                "template": "{name} lives in {city}",
+                "output_variable": "result",
+            },
+        )
+
+        result = await handler.execute(node, simple_state, {})
+
+        assert result["result"] == "Alice lives in NYC"
+
+    @pytest.mark.asyncio
+    async def test_array_strategy(self, handler, state):
+        """Test array output strategy."""
+        node = NodeDefinition(
+            id="agg-1",
+            type=NodeType.VARIABLE_AGGREGATOR,
+            config={
+                "input_variables": ["value", "nullable"],
+                "strategy": "array",
+                "output_variable": "result",
+            },
+        )
+
+        result = await handler.execute(node, state, {})
+
+        assert result["result"] == ["hello", None]
+
+
+class TestNewNodeTypesRegistered:
+    """Test that all new node types are registered."""
+
+    def test_all_node_types_have_handlers(self):
+        """Test that all node types have handlers in reducer."""
+        reducer = WorkflowReducer()
+
+        # Check all new handlers are registered
+        assert NodeType.LOOP in reducer._handlers
+        assert NodeType.VARIABLE_AGGREGATOR in reducer._handlers
+        assert NodeType.PARALLEL in reducer._handlers
+        assert NodeType.MERGE in reducer._handlers
+        assert NodeType.WAIT in reducer._handlers

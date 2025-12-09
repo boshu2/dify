@@ -466,3 +466,469 @@ class CalculatorTool(Tool):
             return {"expression": expression, "result": result}
         except Exception as e:
             return {"error": str(e)}
+
+
+class JsonParseTool(Tool):
+    """Tool to parse and query JSON data."""
+
+    def __init__(self):
+        super().__init__(
+            name="json_parse",
+            description="Parse JSON string and optionally extract a value by path",
+        )
+
+    def get_definition(self) -> ToolDefinition:
+        return ToolDefinition(
+            name=self.name,
+            description=self.description,
+            parameters=[
+                ToolParameter(
+                    name="json_string",
+                    param_type=ParameterType.STRING,
+                    description="JSON string to parse",
+                    required=True,
+                ),
+                ToolParameter(
+                    name="path",
+                    param_type=ParameterType.STRING,
+                    description="Dot-notation path to extract (e.g., 'user.name')",
+                    required=False,
+                ),
+            ],
+        )
+
+    async def execute(self, json_string: str, path: str | None = None) -> dict[str, Any]:
+        try:
+            data = json.loads(json_string)
+        except json.JSONDecodeError as e:
+            return {"error": f"Invalid JSON: {e}"}
+
+        if path:
+            parts = path.split(".")
+            value = data
+            for part in parts:
+                if isinstance(value, dict) and part in value:
+                    value = value[part]
+                elif isinstance(value, list):
+                    try:
+                        idx = int(part)
+                        value = value[idx]
+                    except (ValueError, IndexError):
+                        return {"error": f"Path '{path}' not found"}
+                else:
+                    return {"error": f"Path '{path}' not found"}
+            return {"path": path, "value": value}
+
+        return {"data": data}
+
+
+class JsonFormatTool(Tool):
+    """Tool to format data as JSON string."""
+
+    def __init__(self):
+        super().__init__(
+            name="json_format",
+            description="Convert data to formatted JSON string",
+        )
+
+    def get_definition(self) -> ToolDefinition:
+        return ToolDefinition(
+            name=self.name,
+            description=self.description,
+            parameters=[
+                ToolParameter(
+                    name="data",
+                    param_type=ParameterType.OBJECT,
+                    description="Data object to convert to JSON",
+                    required=True,
+                ),
+                ToolParameter(
+                    name="indent",
+                    param_type=ParameterType.INTEGER,
+                    description="Indentation level (0 for compact)",
+                    required=False,
+                    default=2,
+                ),
+            ],
+        )
+
+    async def execute(self, data: Any, indent: int = 2) -> dict[str, Any]:
+        try:
+            indent_val = indent if indent > 0 else None
+            formatted = json.dumps(data, indent=indent_val, ensure_ascii=False)
+            return {"json": formatted}
+        except (TypeError, ValueError) as e:
+            return {"error": f"Cannot serialize to JSON: {e}"}
+
+
+class StringFormatTool(Tool):
+    """Tool to format strings with variables."""
+
+    def __init__(self):
+        super().__init__(
+            name="string_format",
+            description="Format a template string with variables",
+        )
+
+    def get_definition(self) -> ToolDefinition:
+        return ToolDefinition(
+            name=self.name,
+            description=self.description,
+            parameters=[
+                ToolParameter(
+                    name="template",
+                    param_type=ParameterType.STRING,
+                    description="Template string with {placeholders}",
+                    required=True,
+                ),
+                ToolParameter(
+                    name="variables",
+                    param_type=ParameterType.OBJECT,
+                    description="Variables to substitute",
+                    required=True,
+                ),
+            ],
+        )
+
+    async def execute(self, template: str, variables: dict[str, Any]) -> dict[str, Any]:
+        try:
+            result = template.format(**variables)
+            return {"result": result}
+        except KeyError as e:
+            return {"error": f"Missing variable: {e}"}
+        except Exception as e:
+            return {"error": str(e)}
+
+
+class StringSearchTool(Tool):
+    """Tool to search within strings."""
+
+    def __init__(self):
+        super().__init__(
+            name="string_search",
+            description="Search for pattern in text, supports regex",
+        )
+
+    def get_definition(self) -> ToolDefinition:
+        return ToolDefinition(
+            name=self.name,
+            description=self.description,
+            parameters=[
+                ToolParameter(
+                    name="text",
+                    param_type=ParameterType.STRING,
+                    description="Text to search in",
+                    required=True,
+                ),
+                ToolParameter(
+                    name="pattern",
+                    param_type=ParameterType.STRING,
+                    description="Pattern to search for (regex supported)",
+                    required=True,
+                ),
+                ToolParameter(
+                    name="regex",
+                    param_type=ParameterType.BOOLEAN,
+                    description="Whether to use regex matching",
+                    required=False,
+                    default=False,
+                ),
+            ],
+        )
+
+    async def execute(
+        self, text: str, pattern: str, regex: bool = False
+    ) -> dict[str, Any]:
+        import re
+
+        if regex:
+            try:
+                matches = re.findall(pattern, text)
+                return {"matches": matches, "count": len(matches)}
+            except re.error as e:
+                return {"error": f"Invalid regex: {e}"}
+        else:
+            count = text.count(pattern)
+            positions = []
+            start = 0
+            while True:
+                pos = text.find(pattern, start)
+                if pos == -1:
+                    break
+                positions.append(pos)
+                start = pos + 1
+            return {"count": count, "positions": positions}
+
+
+class RandomTool(Tool):
+    """Tool to generate random values."""
+
+    def __init__(self):
+        super().__init__(
+            name="random",
+            description="Generate random numbers or UUIDs",
+        )
+
+    def get_definition(self) -> ToolDefinition:
+        return ToolDefinition(
+            name=self.name,
+            description=self.description,
+            parameters=[
+                ToolParameter(
+                    name="type",
+                    param_type=ParameterType.STRING,
+                    description="Type of random value",
+                    required=True,
+                    enum=["integer", "float", "uuid", "choice"],
+                ),
+                ToolParameter(
+                    name="min",
+                    param_type=ParameterType.NUMBER,
+                    description="Minimum value (for integer/float)",
+                    required=False,
+                    default=0,
+                ),
+                ToolParameter(
+                    name="max",
+                    param_type=ParameterType.NUMBER,
+                    description="Maximum value (for integer/float)",
+                    required=False,
+                    default=100,
+                ),
+                ToolParameter(
+                    name="choices",
+                    param_type=ParameterType.ARRAY,
+                    description="List of choices (for choice type)",
+                    required=False,
+                ),
+            ],
+        )
+
+    async def execute(
+        self,
+        type: str,
+        min: float = 0,
+        max: float = 100,
+        choices: list[Any] | None = None,
+    ) -> dict[str, Any]:
+        import random
+        import uuid
+
+        if type == "integer":
+            value = random.randint(int(min), int(max))
+            return {"value": value, "type": "integer"}
+        elif type == "float":
+            value = random.uniform(min, max)
+            return {"value": value, "type": "float"}
+        elif type == "uuid":
+            value = str(uuid.uuid4())
+            return {"value": value, "type": "uuid"}
+        elif type == "choice":
+            if not choices:
+                return {"error": "No choices provided"}
+            value = random.choice(choices)
+            return {"value": value, "type": "choice"}
+        else:
+            return {"error": f"Unknown type: {type}"}
+
+
+class HttpRequestTool(Tool):
+    """Tool to make HTTP requests."""
+
+    def __init__(self):
+        super().__init__(
+            name="http_request",
+            description="Make HTTP GET or POST requests",
+        )
+
+    def get_definition(self) -> ToolDefinition:
+        return ToolDefinition(
+            name=self.name,
+            description=self.description,
+            parameters=[
+                ToolParameter(
+                    name="url",
+                    param_type=ParameterType.STRING,
+                    description="URL to request",
+                    required=True,
+                ),
+                ToolParameter(
+                    name="method",
+                    param_type=ParameterType.STRING,
+                    description="HTTP method",
+                    required=False,
+                    default="GET",
+                    enum=["GET", "POST", "PUT", "DELETE", "PATCH"],
+                ),
+                ToolParameter(
+                    name="headers",
+                    param_type=ParameterType.OBJECT,
+                    description="Request headers",
+                    required=False,
+                ),
+                ToolParameter(
+                    name="body",
+                    param_type=ParameterType.OBJECT,
+                    description="Request body (for POST/PUT/PATCH)",
+                    required=False,
+                ),
+                ToolParameter(
+                    name="timeout",
+                    param_type=ParameterType.INTEGER,
+                    description="Request timeout in seconds",
+                    required=False,
+                    default=30,
+                ),
+            ],
+        )
+
+    async def execute(
+        self,
+        url: str,
+        method: str = "GET",
+        headers: dict[str, str] | None = None,
+        body: dict[str, Any] | None = None,
+        timeout: int = 30,
+    ) -> dict[str, Any]:
+        import httpx
+
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.request(
+                    method=method.upper(),
+                    url=url,
+                    headers=headers,
+                    json=body if body else None,
+                )
+                try:
+                    data = response.json()
+                except Exception:
+                    data = response.text
+
+                return {
+                    "status_code": response.status_code,
+                    "headers": dict(response.headers),
+                    "data": data,
+                }
+        except httpx.TimeoutException:
+            return {"error": "Request timed out"}
+        except httpx.RequestError as e:
+            return {"error": f"Request failed: {e}"}
+
+
+class Base64Tool(Tool):
+    """Tool to encode/decode base64."""
+
+    def __init__(self):
+        super().__init__(
+            name="base64",
+            description="Encode or decode base64 strings",
+        )
+
+    def get_definition(self) -> ToolDefinition:
+        return ToolDefinition(
+            name=self.name,
+            description=self.description,
+            parameters=[
+                ToolParameter(
+                    name="action",
+                    param_type=ParameterType.STRING,
+                    description="Action to perform",
+                    required=True,
+                    enum=["encode", "decode"],
+                ),
+                ToolParameter(
+                    name="data",
+                    param_type=ParameterType.STRING,
+                    description="String to encode or decode",
+                    required=True,
+                ),
+            ],
+        )
+
+    async def execute(self, action: str, data: str) -> dict[str, Any]:
+        import base64
+
+        if action == "encode":
+            result = base64.b64encode(data.encode()).decode()
+            return {"result": result}
+        elif action == "decode":
+            try:
+                result = base64.b64decode(data).decode()
+                return {"result": result}
+            except Exception as e:
+                return {"error": f"Decode failed: {e}"}
+        else:
+            return {"error": f"Unknown action: {action}"}
+
+
+class HashTool(Tool):
+    """Tool to compute hashes."""
+
+    def __init__(self):
+        super().__init__(
+            name="hash",
+            description="Compute hash of a string",
+        )
+
+    def get_definition(self) -> ToolDefinition:
+        return ToolDefinition(
+            name=self.name,
+            description=self.description,
+            parameters=[
+                ToolParameter(
+                    name="data",
+                    param_type=ParameterType.STRING,
+                    description="String to hash",
+                    required=True,
+                ),
+                ToolParameter(
+                    name="algorithm",
+                    param_type=ParameterType.STRING,
+                    description="Hash algorithm",
+                    required=False,
+                    default="sha256",
+                    enum=["md5", "sha1", "sha256", "sha512"],
+                ),
+            ],
+        )
+
+    async def execute(self, data: str, algorithm: str = "sha256") -> dict[str, Any]:
+        import hashlib
+
+        algo_map = {
+            "md5": hashlib.md5,
+            "sha1": hashlib.sha1,
+            "sha256": hashlib.sha256,
+            "sha512": hashlib.sha512,
+        }
+        hash_func = algo_map.get(algorithm)
+        if not hash_func:
+            return {"error": f"Unknown algorithm: {algorithm}"}
+
+        hash_value = hash_func(data.encode()).hexdigest()
+        return {"hash": hash_value, "algorithm": algorithm}
+
+
+def get_default_tools() -> list[Tool]:
+    """Get all default builtin tools."""
+    return [
+        GetCurrentTimeTool(),
+        CalculatorTool(),
+        JsonParseTool(),
+        JsonFormatTool(),
+        StringFormatTool(),
+        StringSearchTool(),
+        RandomTool(),
+        HttpRequestTool(),
+        Base64Tool(),
+        HashTool(),
+    ]
+
+
+def create_default_registry() -> ToolRegistry:
+    """Create a registry with all default tools."""
+    registry = ToolRegistry()
+    for tool in get_default_tools():
+        registry.register(tool)
+    return registry

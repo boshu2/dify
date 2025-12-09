@@ -612,3 +612,245 @@ class TestBuiltInTools:
         assert definition.name == "calculator"
         assert len(definition.parameters) == 1
         assert definition.parameters[0].name == "expression"
+
+
+class TestJsonTools:
+    """Tests for JSON tools."""
+
+    @pytest.mark.asyncio
+    async def test_json_parse_simple(self):
+        """Test parsing JSON string."""
+        from app.core.tools import JsonParseTool
+
+        tool = JsonParseTool()
+        result = await tool.execute(json_string='{"name": "test", "value": 42}')
+
+        assert "data" in result
+        assert result["data"]["name"] == "test"
+        assert result["data"]["value"] == 42
+
+    @pytest.mark.asyncio
+    async def test_json_parse_with_path(self):
+        """Test parsing JSON with path extraction."""
+        from app.core.tools import JsonParseTool
+
+        tool = JsonParseTool()
+        result = await tool.execute(
+            json_string='{"user": {"name": "Alice", "age": 30}}',
+            path="user.name",
+        )
+
+        assert result["path"] == "user.name"
+        assert result["value"] == "Alice"
+
+    @pytest.mark.asyncio
+    async def test_json_parse_array_index(self):
+        """Test parsing JSON with array index."""
+        from app.core.tools import JsonParseTool
+
+        tool = JsonParseTool()
+        result = await tool.execute(
+            json_string='{"items": ["a", "b", "c"]}',
+            path="items.1",
+        )
+
+        assert result["value"] == "b"
+
+    @pytest.mark.asyncio
+    async def test_json_parse_invalid(self):
+        """Test parsing invalid JSON."""
+        from app.core.tools import JsonParseTool
+
+        tool = JsonParseTool()
+        result = await tool.execute(json_string="not valid json")
+
+        assert "error" in result
+
+    @pytest.mark.asyncio
+    async def test_json_format(self):
+        """Test formatting data as JSON."""
+        from app.core.tools import JsonFormatTool
+
+        tool = JsonFormatTool()
+        result = await tool.execute(data={"name": "test"}, indent=0)
+
+        assert "json" in result
+        assert result["json"] == '{"name": "test"}'
+
+
+class TestStringTools:
+    """Tests for string tools."""
+
+    @pytest.mark.asyncio
+    async def test_string_format(self):
+        """Test string formatting."""
+        from app.core.tools import StringFormatTool
+
+        tool = StringFormatTool()
+        result = await tool.execute(
+            template="Hello, {name}!",
+            variables={"name": "World"},
+        )
+
+        assert result["result"] == "Hello, World!"
+
+    @pytest.mark.asyncio
+    async def test_string_format_missing_var(self):
+        """Test string formatting with missing variable."""
+        from app.core.tools import StringFormatTool
+
+        tool = StringFormatTool()
+        result = await tool.execute(
+            template="Hello, {name}!",
+            variables={},
+        )
+
+        assert "error" in result
+
+    @pytest.mark.asyncio
+    async def test_string_search_literal(self):
+        """Test string search with literal pattern."""
+        from app.core.tools import StringSearchTool
+
+        tool = StringSearchTool()
+        result = await tool.execute(
+            text="hello world, hello universe",
+            pattern="hello",
+        )
+
+        assert result["count"] == 2
+        assert result["positions"] == [0, 13]
+
+    @pytest.mark.asyncio
+    async def test_string_search_regex(self):
+        """Test string search with regex."""
+        from app.core.tools import StringSearchTool
+
+        tool = StringSearchTool()
+        result = await tool.execute(
+            text="email: test@example.com and admin@test.org",
+            pattern=r"[\w]+@[\w]+\.\w+",
+            regex=True,
+        )
+
+        assert result["count"] == 2
+        assert "test@example.com" in result["matches"]
+
+
+class TestRandomTool:
+    """Tests for random tool."""
+
+    @pytest.mark.asyncio
+    async def test_random_integer(self):
+        """Test generating random integer."""
+        from app.core.tools import RandomTool
+
+        tool = RandomTool()
+        result = await tool.execute(type="integer", min=1, max=10)
+
+        assert result["type"] == "integer"
+        assert 1 <= result["value"] <= 10
+
+    @pytest.mark.asyncio
+    async def test_random_uuid(self):
+        """Test generating random UUID."""
+        from app.core.tools import RandomTool
+        import uuid
+
+        tool = RandomTool()
+        result = await tool.execute(type="uuid")
+
+        assert result["type"] == "uuid"
+        # Should be valid UUID
+        uuid.UUID(result["value"])
+
+    @pytest.mark.asyncio
+    async def test_random_choice(self):
+        """Test random choice."""
+        from app.core.tools import RandomTool
+
+        tool = RandomTool()
+        result = await tool.execute(type="choice", choices=["a", "b", "c"])
+
+        assert result["type"] == "choice"
+        assert result["value"] in ["a", "b", "c"]
+
+
+class TestBase64Tool:
+    """Tests for base64 tool."""
+
+    @pytest.mark.asyncio
+    async def test_encode(self):
+        """Test base64 encoding."""
+        from app.core.tools import Base64Tool
+
+        tool = Base64Tool()
+        result = await tool.execute(action="encode", data="Hello World")
+
+        assert result["result"] == "SGVsbG8gV29ybGQ="
+
+    @pytest.mark.asyncio
+    async def test_decode(self):
+        """Test base64 decoding."""
+        from app.core.tools import Base64Tool
+
+        tool = Base64Tool()
+        result = await tool.execute(action="decode", data="SGVsbG8gV29ybGQ=")
+
+        assert result["result"] == "Hello World"
+
+
+class TestHashTool:
+    """Tests for hash tool."""
+
+    @pytest.mark.asyncio
+    async def test_sha256(self):
+        """Test SHA256 hashing."""
+        from app.core.tools import HashTool
+
+        tool = HashTool()
+        result = await tool.execute(data="test", algorithm="sha256")
+
+        assert result["algorithm"] == "sha256"
+        assert (
+            result["hash"]
+            == "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+        )
+
+    @pytest.mark.asyncio
+    async def test_md5(self):
+        """Test MD5 hashing."""
+        from app.core.tools import HashTool
+
+        tool = HashTool()
+        result = await tool.execute(data="test", algorithm="md5")
+
+        assert result["algorithm"] == "md5"
+        assert result["hash"] == "098f6bcd4621d373cade4e832627b4f6"
+
+
+class TestDefaultRegistry:
+    """Tests for default tool registry."""
+
+    def test_get_default_tools(self):
+        """Test getting default tools list."""
+        from app.core.tools import get_default_tools
+
+        tools = get_default_tools()
+        assert len(tools) == 10
+
+        tool_names = [t.name for t in tools]
+        assert "get_current_time" in tool_names
+        assert "calculator" in tool_names
+        assert "json_parse" in tool_names
+        assert "random" in tool_names
+        assert "hash" in tool_names
+
+    def test_create_default_registry(self):
+        """Test creating default registry."""
+        from app.core.tools import create_default_registry
+
+        registry = create_default_registry()
+        assert len(registry) == 10
+        assert "calculator" in registry
+        assert "json_parse" in registry

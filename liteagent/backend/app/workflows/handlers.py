@@ -623,3 +623,333 @@ class KnowledgeRetrievalNodeHandler(NodeHandler):
                 "min_score": min_score,
             },
         }
+
+
+class LoopNodeHandler(NodeHandler):
+    """
+    Handler for LOOP nodes (iteration over arrays).
+
+    Features:
+    - Iterate over arrays/lists
+    - Configurable loop variable name
+    - Break condition support
+    - Max iterations limit for safety
+    - Accumulator for collecting results
+    """
+
+    async def execute(
+        self,
+        node: NodeDefinition,
+        state: WorkflowState,
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
+        # Get configuration
+        array_var = node.config.get("array_variable", "items")
+        item_var = node.config.get("item_variable", "item")
+        index_var = node.config.get("index_variable", "index")
+        output_var = node.config.get("output_variable", "loop_results")
+        max_iterations = node.config.get("max_iterations", 1000)
+        break_condition = node.config.get("break_condition")
+        transform_code = node.config.get("transform")
+
+        # Get array to iterate over
+        items = state.get_variable(array_var, [])
+        if not isinstance(items, (list, tuple)):
+            return {
+                output_var: [],
+                "error": f"Variable '{array_var}' is not iterable",
+                "loop_metadata": {"success": False, "iterations": 0},
+            }
+
+        results = []
+        iterations = 0
+
+        for idx, item in enumerate(items):
+            # Safety limit
+            if iterations >= max_iterations:
+                break
+
+            iterations += 1
+
+            # Set loop variables in a temporary context
+            loop_vars = {
+                item_var: item,
+                index_var: idx,
+                "loop_length": len(items),
+                "is_first": idx == 0,
+                "is_last": idx == len(items) - 1,
+            }
+
+            # Check break condition
+            if break_condition:
+                try:
+                    eval_context = {
+                        **state.variables,
+                        **loop_vars,
+                    }
+                    if eval(break_condition, {"__builtins__": {}}, eval_context):
+                        break
+                except Exception:
+                    pass  # Continue on evaluation errors
+
+            # Apply transform if provided
+            if transform_code:
+                try:
+                    exec_globals = {
+                        "__builtins__": {
+                            "len": len,
+                            "str": str,
+                            "int": int,
+                            "float": float,
+                            "list": list,
+                            "dict": dict,
+                            "bool": bool,
+                            "range": range,
+                            "sum": sum,
+                            "min": min,
+                            "max": max,
+                            "abs": abs,
+                            "round": round,
+                            "sorted": sorted,
+                            "reversed": reversed,
+                            "enumerate": enumerate,
+                            "zip": zip,
+                            "None": None,
+                            "True": True,
+                            "False": False,
+                        },
+                        "json": json,
+                        **state.variables,
+                        **loop_vars,
+                    }
+                    exec_locals: dict[str, Any] = {}
+                    exec(transform_code, exec_globals, exec_locals)
+                    result = exec_locals.get("result", item)
+                    results.append(result)
+                except Exception as e:
+                    # On transform error, include item with error marker
+                    results.append({"_item": item, "_error": str(e)})
+            else:
+                # No transform - just collect items
+                results.append(item)
+
+        return {
+            output_var: results,
+            "loop_metadata": {
+                "success": True,
+                "iterations": iterations,
+                "total_items": len(items),
+                "result_count": len(results),
+            },
+        }
+
+
+class VariableAggregatorNodeHandler(NodeHandler):
+    """
+    Handler for VARIABLE_AGGREGATOR nodes.
+
+    Combines multiple variables into a single output variable using
+    different aggregation strategies.
+
+    Features:
+    - Merge dictionaries
+    - Concatenate arrays
+    - Format as template
+    - Select first non-null
+    - Custom aggregation expressions
+    """
+
+    async def execute(
+        self,
+        node: NodeDefinition,
+        state: WorkflowState,
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
+        # Get configuration
+        input_vars = node.config.get("input_variables", [])
+        output_var = node.config.get("output_variable", "aggregated")
+        strategy = node.config.get("strategy", "merge")
+        template = node.config.get("template")
+        expression = node.config.get("expression")
+
+        # Collect input values
+        values = {}
+        for var_name in input_vars:
+            values[var_name] = state.get_variable(var_name)
+
+        result: Any = None
+
+        if strategy == "merge":
+            # Merge all dictionaries
+            result = {}
+            for var_name in input_vars:
+                val = values.get(var_name)
+                if isinstance(val, dict):
+                    result.update(val)
+                else:
+                    result[var_name] = val
+
+        elif strategy == "concat":
+            # Concatenate arrays
+            result = []
+            for var_name in input_vars:
+                val = values.get(var_name)
+                if isinstance(val, (list, tuple)):
+                    result.extend(val)
+                elif val is not None:
+                    result.append(val)
+
+        elif strategy == "first_non_null":
+            # Return first non-null value
+            for var_name in input_vars:
+                val = values.get(var_name)
+                if val is not None:
+                    result = val
+                    break
+
+        elif strategy == "template" and template:
+            # Format using template - merge values with input_vars taking precedence
+            try:
+                format_vars = {**state.variables, **values}
+                result = template.format(**format_vars)
+            except KeyError as e:
+                return {
+                    output_var: None,
+                    "error": f"Missing variable in template: {e}",
+                }
+
+        elif strategy == "expression" and expression:
+            # Evaluate custom expression
+            try:
+                eval_context = {**values, **state.variables}
+                result = eval(expression, {"__builtins__": {}}, eval_context)
+            except Exception as e:
+                return {
+                    output_var: None,
+                    "error": f"Expression error: {e}",
+                }
+
+        elif strategy == "object":
+            # Create object with variable names as keys
+            result = values
+
+        elif strategy == "array":
+            # Create array of values
+            result = list(values.values())
+
+        else:
+            # Default: return all values as dict
+            result = values
+
+        return {
+            output_var: result,
+            "aggregation_metadata": {
+                "strategy": strategy,
+                "input_count": len(input_vars),
+            },
+        }
+
+
+class ParallelNodeHandler(NodeHandler):
+    """
+    Handler for PARALLEL nodes (concurrent execution marker).
+
+    This node marks the start of parallel branches. The actual parallel
+    execution is handled by the workflow engine, not this handler.
+
+    This handler collects branch information for the engine to execute.
+    """
+
+    async def execute(
+        self,
+        node: NodeDefinition,
+        state: WorkflowState,
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
+        branches = node.config.get("branches", [])
+        timeout = node.config.get("timeout", 300)
+        fail_fast = node.config.get("fail_fast", False)
+
+        return {
+            "parallel_info": {
+                "branches": branches,
+                "timeout": timeout,
+                "fail_fast": fail_fast,
+                "status": "pending",
+            },
+        }
+
+
+class MergeNodeHandler(NodeHandler):
+    """
+    Handler for MERGE nodes (wait for parallel branches).
+
+    Waits for all parallel branches to complete and merges their results.
+    """
+
+    async def execute(
+        self,
+        node: NodeDefinition,
+        state: WorkflowState,
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
+        # Get branch results from state
+        branch_outputs = state.get_variable("_branch_outputs", {})
+        output_var = node.config.get("output_variable", "merged")
+        merge_strategy = node.config.get("merge_strategy", "object")
+
+        if merge_strategy == "object":
+            # Keep outputs as object with branch names
+            result = branch_outputs
+        elif merge_strategy == "array":
+            # Convert to array
+            result = list(branch_outputs.values())
+        elif merge_strategy == "flatten":
+            # Flatten all arrays
+            result = []
+            for val in branch_outputs.values():
+                if isinstance(val, (list, tuple)):
+                    result.extend(val)
+                else:
+                    result.append(val)
+        else:
+            result = branch_outputs
+
+        return {
+            output_var: result,
+            "merge_metadata": {
+                "branch_count": len(branch_outputs),
+                "branches": list(branch_outputs.keys()),
+            },
+        }
+
+
+class WaitNodeHandler(NodeHandler):
+    """Handler for WAIT nodes (delay/external event)."""
+
+    async def execute(
+        self,
+        node: NodeDefinition,
+        state: WorkflowState,
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
+        import asyncio
+
+        wait_type = node.config.get("wait_type", "duration")
+        duration = node.config.get("duration", 0)
+
+        if wait_type == "duration" and duration > 0:
+            # Simple delay (capped at 60 seconds for safety)
+            await asyncio.sleep(min(duration, 60))
+            return {"waited": duration, "wait_type": "duration"}
+
+        elif wait_type == "event":
+            # Mark as waiting for external event
+            event_name = node.config.get("event_name", "external_event")
+            return {
+                "waiting_for": event_name,
+                "wait_type": "event",
+                "status": "waiting",
+            }
+
+        return {"waited": 0, "wait_type": wait_type}

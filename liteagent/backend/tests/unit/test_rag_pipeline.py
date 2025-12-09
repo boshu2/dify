@@ -767,3 +767,281 @@ class TestRAGPipelineIntegration:
         # Should return Python-related docs
         contents = [sr.document.content for sr in result.documents]
         assert any("Python" in c for c in contents)
+
+
+# =============================================================================
+# Reranker Tests
+# =============================================================================
+
+from app.rag.retriever import (
+    Reranker,
+    CrossEncoderReranker,
+    WeightedScoreReranker,
+    RetrievalPipeline,
+)
+
+
+class TestCrossEncoderReranker:
+    """Test cross-encoder reranker."""
+
+    @pytest.mark.asyncio
+    async def test_rerank_reorders_by_similarity(self):
+        """Test that reranker reorders results by similarity score."""
+        # Create mock embedder
+        mock_embedder = AsyncMock()
+
+        # Mock embed_query to return different embeddings
+        # Query embedding
+        query_emb = [1.0, 0.0, 0.0]
+        # Doc embeddings - doc2 is most similar to query
+        doc1_emb = [0.5, 0.5, 0.5]  # Less similar
+        doc2_emb = [0.9, 0.1, 0.0]  # Most similar
+        doc3_emb = [0.0, 1.0, 0.0]  # Least similar
+
+        mock_embedder.embed_query = AsyncMock(
+            side_effect=[query_emb, doc1_emb, doc2_emb, doc3_emb]
+        )
+
+        reranker = CrossEncoderReranker(embedder=mock_embedder)
+
+        # Initial results (wrong order)
+        initial_results = [
+            SearchResult(document=Document(id="1", content="Doc 1"), score=0.9, rank=1),
+            SearchResult(document=Document(id="2", content="Doc 2"), score=0.7, rank=2),
+            SearchResult(document=Document(id="3", content="Doc 3"), score=0.5, rank=3),
+        ]
+
+        reranked = await reranker.rerank("query", initial_results)
+
+        # Doc 2 should now be first (most similar to query)
+        assert reranked[0].document.id == "2"
+        assert reranked[0].rank == 1
+
+    @pytest.mark.asyncio
+    async def test_rerank_respects_limit(self):
+        """Test that reranker respects limit parameter."""
+        mock_embedder = AsyncMock()
+        mock_embedder.embed_query = AsyncMock(return_value=[0.5, 0.5, 0.5])
+
+        reranker = CrossEncoderReranker(embedder=mock_embedder)
+
+        initial_results = [
+            SearchResult(document=Document(id=str(i), content=f"Doc {i}"), score=0.5, rank=i)
+            for i in range(10)
+        ]
+
+        reranked = await reranker.rerank("query", initial_results, limit=3)
+
+        assert len(reranked) == 3
+
+    @pytest.mark.asyncio
+    async def test_rerank_score_threshold(self):
+        """Test that reranker filters by score threshold."""
+        mock_embedder = AsyncMock()
+
+        # Return different embeddings for each call
+        embeddings = [
+            [1.0, 0.0, 0.0],  # Query
+            [0.9, 0.1, 0.0],  # High similarity
+            [0.0, 1.0, 0.0],  # Low similarity
+        ]
+        mock_embedder.embed_query = AsyncMock(side_effect=embeddings)
+
+        reranker = CrossEncoderReranker(
+            embedder=mock_embedder,
+            score_threshold=0.5,
+        )
+
+        initial_results = [
+            SearchResult(document=Document(id="1", content="Similar"), score=0.9, rank=1),
+            SearchResult(document=Document(id="2", content="Different"), score=0.3, rank=2),
+        ]
+
+        reranked = await reranker.rerank("query", initial_results)
+
+        # Only high similarity doc should pass threshold
+        assert len(reranked) == 1
+        assert reranked[0].document.id == "1"
+
+    @pytest.mark.asyncio
+    async def test_rerank_empty_results(self):
+        """Test that reranker handles empty results."""
+        mock_embedder = AsyncMock()
+        reranker = CrossEncoderReranker(embedder=mock_embedder)
+
+        reranked = await reranker.rerank("query", [])
+
+        assert reranked == []
+
+
+class TestWeightedScoreReranker:
+    """Test weighted score reranker."""
+
+    @pytest.mark.asyncio
+    async def test_weighted_rerank_combines_signals(self):
+        """Test that weighted reranker combines multiple signals."""
+        reranker = WeightedScoreReranker(
+            original_weight=0.5,
+            recency_weight=0.3,
+            length_weight=0.2,
+            preferred_length=100,
+        )
+
+        # Doc 2 has lower original score but is more recent
+        initial_results = [
+            SearchResult(
+                document=Document(
+                    id="1",
+                    content="x" * 100,
+                    metadata={"created_at": 100},
+                ),
+                score=0.9,
+                rank=1,
+            ),
+            SearchResult(
+                document=Document(
+                    id="2",
+                    content="x" * 100,
+                    metadata={"created_at": 200},
+                ),
+                score=0.7,
+                rank=2,
+            ),
+        ]
+
+        reranked = await reranker.rerank("query", initial_results)
+
+        # Both should be present, possibly in different order
+        assert len(reranked) == 2
+
+    @pytest.mark.asyncio
+    async def test_weighted_rerank_respects_limit(self):
+        """Test that weighted reranker respects limit."""
+        reranker = WeightedScoreReranker()
+
+        initial_results = [
+            SearchResult(
+                document=Document(id=str(i), content=f"Doc {i}"),
+                score=0.5,
+                rank=i,
+            )
+            for i in range(10)
+        ]
+
+        reranked = await reranker.rerank("query", initial_results, limit=5)
+
+        assert len(reranked) == 5
+
+    @pytest.mark.asyncio
+    async def test_weighted_rerank_length_scoring(self):
+        """Test that length scoring prefers optimal length."""
+        reranker = WeightedScoreReranker(
+            original_weight=0.0,
+            recency_weight=0.0,
+            length_weight=1.0,
+            preferred_length=100,
+        )
+
+        # Doc with optimal length should score higher
+        initial_results = [
+            SearchResult(
+                document=Document(id="1", content="x" * 100),  # Optimal
+                score=0.5,
+                rank=1,
+            ),
+            SearchResult(
+                document=Document(id="2", content="x" * 500),  # Too long
+                score=0.5,
+                rank=2,
+            ),
+        ]
+
+        reranked = await reranker.rerank("query", initial_results)
+
+        # Optimal length doc should be first
+        assert reranked[0].document.id == "1"
+
+
+class TestRetrievalPipeline:
+    """Test two-stage retrieval pipeline."""
+
+    @pytest.mark.asyncio
+    async def test_pipeline_without_reranker(self):
+        """Test pipeline passes through results without reranker."""
+        mock_retriever = AsyncMock()
+        mock_retriever.retrieve.return_value = RetrievalResult(
+            documents=[
+                SearchResult(document=Document(id="1", content="Doc 1"), score=0.9, rank=1),
+            ],
+            query="test",
+            strategy="bm25",
+        )
+
+        pipeline = RetrievalPipeline(retriever=mock_retriever)
+
+        result = await pipeline.retrieve("test", limit=5)
+
+        assert len(result.documents) == 1
+        assert result.strategy == "bm25"
+
+    @pytest.mark.asyncio
+    async def test_pipeline_with_reranker(self):
+        """Test pipeline applies reranker."""
+        mock_retriever = AsyncMock()
+        mock_retriever.retrieve.return_value = RetrievalResult(
+            documents=[
+                SearchResult(document=Document(id="1", content="Doc 1"), score=0.9, rank=1),
+                SearchResult(document=Document(id="2", content="Doc 2"), score=0.7, rank=2),
+            ],
+            query="test",
+            strategy="bm25",
+        )
+
+        mock_reranker = AsyncMock()
+        mock_reranker.rerank.return_value = [
+            SearchResult(document=Document(id="2", content="Doc 2"), score=0.95, rank=1),
+            SearchResult(document=Document(id="1", content="Doc 1"), score=0.85, rank=2),
+        ]
+
+        pipeline = RetrievalPipeline(
+            retriever=mock_retriever,
+            reranker=mock_reranker,
+            initial_limit_multiplier=2,
+        )
+
+        result = await pipeline.retrieve("test", limit=2)
+
+        # Reranker was called
+        mock_reranker.rerank.assert_called_once()
+
+        # Strategy indicates reranking
+        assert "rerank" in result.strategy
+
+        # Metadata shows initial candidates
+        assert result.metadata["reranked"] is True
+
+    @pytest.mark.asyncio
+    async def test_pipeline_initial_limit_multiplier(self):
+        """Test that pipeline fetches more results for reranking."""
+        mock_retriever = AsyncMock()
+        mock_retriever.retrieve.return_value = RetrievalResult(
+            documents=[],
+            query="test",
+            strategy="bm25",
+        )
+
+        mock_reranker = AsyncMock()
+        mock_reranker.rerank.return_value = []
+
+        pipeline = RetrievalPipeline(
+            retriever=mock_retriever,
+            reranker=mock_reranker,
+            initial_limit_multiplier=3,
+        )
+
+        await pipeline.retrieve("test", limit=10)
+
+        # Should request 3x the limit for initial retrieval
+        mock_retriever.retrieve.assert_called_once()
+        call_args = mock_retriever.retrieve.call_args
+        assert call_args.kwargs.get("limit") == 30  # 10 * 3

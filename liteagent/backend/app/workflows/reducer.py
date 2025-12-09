@@ -26,6 +26,11 @@ from app.workflows.handlers import (
     LLMNodeHandler,
     CodeNodeHandler,
     KnowledgeRetrievalNodeHandler,
+    LoopNodeHandler,
+    VariableAggregatorNodeHandler,
+    ParallelNodeHandler,
+    MergeNodeHandler,
+    WaitNodeHandler,
 )
 
 
@@ -49,6 +54,11 @@ class WorkflowReducer:
             NodeType.LLM: LLMNodeHandler(),
             NodeType.CODE: CodeNodeHandler(),
             NodeType.KNOWLEDGE_RETRIEVAL: KnowledgeRetrievalNodeHandler(),
+            NodeType.LOOP: LoopNodeHandler(),
+            NodeType.VARIABLE_AGGREGATOR: VariableAggregatorNodeHandler(),
+            NodeType.PARALLEL: ParallelNodeHandler(),
+            NodeType.MERGE: MergeNodeHandler(),
+            NodeType.WAIT: WaitNodeHandler(),
         }
 
     def register_handler(self, node_type: NodeType, handler: NodeHandler) -> None:

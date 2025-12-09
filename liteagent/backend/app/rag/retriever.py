@@ -354,6 +354,272 @@ class HybridRetriever(Retriever):
         )
 
 
+class Reranker(ABC):
+    """Abstract reranker interface for two-stage retrieval."""
+
+    @abstractmethod
+    async def rerank(
+        self,
+        query: str,
+        results: list[SearchResult],
+        limit: int | None = None,
+    ) -> list[SearchResult]:
+        """
+        Rerank retrieval results.
+
+        Args:
+            query: Original search query.
+            results: Initial retrieval results.
+            limit: Optional limit on returned results.
+
+        Returns:
+            Reranked results sorted by relevance.
+        """
+        pass
+
+
+class CrossEncoderReranker(Reranker):
+    """
+    Reranker using cross-encoder style scoring.
+
+    Instead of separate query and document embeddings, this computes
+    a relevance score by embedding the concatenation of query and document.
+    This is more accurate but more expensive than bi-encoder retrieval.
+    """
+
+    def __init__(
+        self,
+        embedder: EmbeddingProvider,
+        score_threshold: float = 0.0,
+    ):
+        """
+        Initialize cross-encoder reranker.
+
+        Args:
+            embedder: Embedding provider for scoring.
+            score_threshold: Minimum score to include.
+        """
+        self.embedder = embedder
+        self.score_threshold = score_threshold
+
+    async def rerank(
+        self,
+        query: str,
+        results: list[SearchResult],
+        limit: int | None = None,
+    ) -> list[SearchResult]:
+        """Rerank using cross-encoder style scoring."""
+        if not results:
+            return []
+
+        # Generate query embedding
+        query_embedding = await self.embedder.embed_query(query)
+
+        # Score each document by embedding similarity to query
+        scored_results: list[tuple[SearchResult, float]] = []
+
+        for result in results:
+            # Get document embedding - recompute for accuracy
+            doc_embedding = await self.embedder.embed_query(result.document.content)
+
+            # Compute cosine similarity
+            score = self._cosine_similarity(query_embedding, doc_embedding)
+
+            if score >= self.score_threshold:
+                scored_results.append((result, score))
+
+        # Sort by new score
+        scored_results.sort(key=lambda x: x[1], reverse=True)
+
+        # Apply limit
+        if limit:
+            scored_results = scored_results[:limit]
+
+        # Create new results with updated scores and ranks
+        return [
+            SearchResult(
+                document=res.document,
+                score=score,
+                rank=i + 1,
+            )
+            for i, (res, score) in enumerate(scored_results)
+        ]
+
+    def _cosine_similarity(self, a: list[float], b: list[float]) -> float:
+        """Compute cosine similarity between two vectors."""
+        dot_product = sum(x * y for x, y in zip(a, b))
+        norm_a = math.sqrt(sum(x * x for x in a))
+        norm_b = math.sqrt(sum(x * x for x in b))
+
+        if norm_a == 0 or norm_b == 0:
+            return 0.0
+
+        return dot_product / (norm_a * norm_b)
+
+
+class WeightedScoreReranker(Reranker):
+    """
+    Reranker that combines original score with additional signals.
+
+    Useful for incorporating metadata signals like recency, popularity, etc.
+    """
+
+    def __init__(
+        self,
+        original_weight: float = 0.7,
+        recency_weight: float = 0.15,
+        length_weight: float = 0.15,
+        recency_field: str = "created_at",
+        preferred_length: int = 500,
+    ):
+        """
+        Initialize weighted reranker.
+
+        Args:
+            original_weight: Weight for original retrieval score.
+            recency_weight: Weight for recency signal.
+            length_weight: Weight for content length signal.
+            recency_field: Metadata field for timestamp.
+            preferred_length: Optimal content length.
+        """
+        self.original_weight = original_weight
+        self.recency_weight = recency_weight
+        self.length_weight = length_weight
+        self.recency_field = recency_field
+        self.preferred_length = preferred_length
+
+    async def rerank(
+        self,
+        query: str,
+        results: list[SearchResult],
+        limit: int | None = None,
+    ) -> list[SearchResult]:
+        """Rerank using weighted combination of signals."""
+        if not results:
+            return []
+
+        scored_results: list[tuple[SearchResult, float]] = []
+
+        # Find max timestamp for normalization
+        max_timestamp = 0.0
+        for result in results:
+            ts = result.document.metadata.get(self.recency_field, 0)
+            if isinstance(ts, (int, float)):
+                max_timestamp = max(max_timestamp, ts)
+
+        for result in results:
+            # Original score (normalized to 0-1)
+            original_score = max(0.0, min(1.0, result.score))
+
+            # Recency score
+            recency_score = 0.5  # Default if no timestamp
+            ts = result.document.metadata.get(self.recency_field, 0)
+            if isinstance(ts, (int, float)) and max_timestamp > 0:
+                recency_score = ts / max_timestamp
+
+            # Length score - prefer documents near preferred length
+            content_len = len(result.document.content)
+            length_diff = abs(content_len - self.preferred_length)
+            length_score = max(0.0, 1.0 - (length_diff / self.preferred_length))
+
+            # Combined score
+            combined_score = (
+                self.original_weight * original_score
+                + self.recency_weight * recency_score
+                + self.length_weight * length_score
+            )
+
+            scored_results.append((result, combined_score))
+
+        # Sort by combined score
+        scored_results.sort(key=lambda x: x[1], reverse=True)
+
+        if limit:
+            scored_results = scored_results[:limit]
+
+        return [
+            SearchResult(
+                document=res.document,
+                score=score,
+                rank=i + 1,
+            )
+            for i, (res, score) in enumerate(scored_results)
+        ]
+
+
+class RetrievalPipeline:
+    """
+    Two-stage retrieval pipeline: retrieve then rerank.
+
+    Combines a retriever for initial candidate generation with
+    a reranker for more accurate final ranking.
+    """
+
+    def __init__(
+        self,
+        retriever: Retriever,
+        reranker: Reranker | None = None,
+        initial_limit_multiplier: int = 3,
+    ):
+        """
+        Initialize retrieval pipeline.
+
+        Args:
+            retriever: First stage retriever.
+            reranker: Optional second stage reranker.
+            initial_limit_multiplier: Factor to multiply limit for initial retrieval.
+        """
+        self.retriever = retriever
+        self.reranker = reranker
+        self.initial_limit_multiplier = initial_limit_multiplier
+
+    async def retrieve(
+        self,
+        query: str,
+        limit: int = 10,
+        filter: dict[str, Any] | None = None,
+    ) -> RetrievalResult:
+        """
+        Execute two-stage retrieval.
+
+        Args:
+            query: Search query.
+            limit: Final number of results.
+            filter: Metadata filter.
+
+        Returns:
+            RetrievalResult with ranked documents.
+        """
+        # First stage: initial retrieval
+        initial_limit = limit * self.initial_limit_multiplier if self.reranker else limit
+        initial_result = await self.retriever.retrieve(
+            query=query,
+            limit=initial_limit,
+            filter=filter,
+        )
+
+        if not self.reranker:
+            return initial_result
+
+        # Second stage: reranking
+        reranked_docs = await self.reranker.rerank(
+            query=query,
+            results=initial_result.documents,
+            limit=limit,
+        )
+
+        return RetrievalResult(
+            documents=reranked_docs,
+            query=query,
+            strategy=f"{initial_result.strategy}+rerank",
+            metadata={
+                **initial_result.metadata,
+                "reranked": True,
+                "initial_candidates": len(initial_result.documents),
+            },
+        )
+
+
 def create_retriever(
     strategy: str = "hybrid",
     vector_store: VectorStore | None = None,

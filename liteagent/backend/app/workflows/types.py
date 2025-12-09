@@ -25,6 +25,7 @@ class NodeType(str, Enum):
     LLM = "llm"  # Direct LLM invocation
     CODE = "code"  # Code execution
     KNOWLEDGE_RETRIEVAL = "knowledge_retrieval"  # RAG retrieval
+    VARIABLE_AGGREGATOR = "variable_aggregator"  # Variable merging
 
 
 class WorkflowStatus(str, Enum):
