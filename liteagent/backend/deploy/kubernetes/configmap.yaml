@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: liteagent-config
+  namespace: liteagent
+  labels:
+    app.kubernetes.io/name: liteagent
+data:
+  LOG_LEVEL: "INFO"
+  PYTHONUNBUFFERED: "1"
+  CELERY_WORKER_CONCURRENCY: "4"

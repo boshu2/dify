@@ -1,0 +1,143 @@
+version: '3.8'
+
+services:
+  # API Server
+  api:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      target: production
+    image: liteagent-api:latest
+    container_name: liteagent-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://liteagent:${DB_PASSWORD}@postgres:5432/liteagent
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - LOG_LEVEL=INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - liteagent-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Celery Worker
+  celery-worker:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      target: celery-worker
+    image: liteagent-worker:latest
+    container_name: liteagent-worker
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://liteagent:${DB_PASSWORD}@postgres:5432/liteagent
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - api
+      - redis
+    networks:
+      - liteagent-network
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+
+  # Celery Beat (scheduler)
+  celery-beat:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      target: celery-beat
+    image: liteagent-beat:latest
+    container_name: liteagent-beat
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://liteagent:${DB_PASSWORD}@postgres:5432/liteagent
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - api
+      - redis
+    networks:
+      - liteagent-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: liteagent-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=liteagent
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=liteagent
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U liteagent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - liteagent-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+
+  # Redis Cache & Message Broker
+  redis:
+    image: redis:7-alpine
+    container_name: liteagent-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - liteagent-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+networks:
+  liteagent-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
