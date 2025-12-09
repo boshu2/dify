@@ -52,6 +52,7 @@ dependencies = [
     "lxml>=5.0.0",
     # Vector stores
     "qdrant-client>=1.7.0",
+    "email-validator>=2.3.0",
 ]
 
 [project.optional-dependencies]
