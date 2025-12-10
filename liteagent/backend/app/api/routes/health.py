@@ -149,7 +149,7 @@ async def metrics_endpoint() -> dict[str, Any]:
     Returns application metrics in a simple JSON format.
     For Prometheus-compatible metrics, use the /metrics/prometheus endpoint.
     """
-    from app.core.logging import metrics
+    from app.core.metrics import metrics
 
     return {
         "counters": {k: v for k, v in metrics._counters.items()},

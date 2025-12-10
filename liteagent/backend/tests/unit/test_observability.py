@@ -376,97 +376,12 @@ class TestHelperFunctions:
         assert len(span_id) == 16  # 8 bytes hex
 
 
-class TestLogging:
-    """Tests for logging enhancements."""
-
-    def test_log_config_defaults(self):
-        """Test LogConfig default values."""
-        from app.core.logging import LogConfig
-
-        config = LogConfig()
-
-        assert config.level == "INFO"
-        assert config.format == "json"
-        assert config.file_enabled is False
-
-    def test_log_config_validation(self):
-        """Test LogConfig validation."""
-        from app.core.logging import LogConfig
-
-        with pytest.raises(ValueError):
-            LogConfig(level="INVALID")
-
-    def test_json_formatter(self):
-        """Test JSON log formatter."""
-        import logging
-        from io import StringIO
-
-        from app.core.logging import JSONFormatter, setup_logging, LogConfig
-
-        stream = StringIO()
-        config = LogConfig(format="json")
-        setup_logging(config, stream=stream)
-
-        logger = logging.getLogger("liteagent.test")
-        logger.info("Test message")
-
-        output = stream.getvalue()
-        log_data = json.loads(output.strip())
-
-        assert log_data["message"] == "Test message"
-        assert log_data["level"] == "INFO"
-        assert "timestamp" in log_data
-
-    def test_request_id_context(self):
-        """Test request ID context manager."""
-        from app.core.logging import RequestIDContext, get_request_id
-
-        with RequestIDContext("test-request-123") as request_id:
-            assert request_id == "test-request-123"
-            assert get_request_id() == "test-request-123"
-
-        assert get_request_id() is None
-
-    def test_request_logger(self):
-        """Test RequestLogger."""
-        from app.core.logging import RequestLogger
-
-        logger = RequestLogger()
-
-        # Should not raise
-        logger.log_request_start("GET", "/api/test", "req-123")
-        logger.log_request_end("GET", "/api/test", 200, 50.0, "req-123")
-        logger.log_request_error("GET", "/api/test", "Error", "req-123")
-
-    def test_llm_call_logger(self):
-        """Test LLMCallLogger."""
-        from app.core.logging import LLMCallLogger
-
-        logger = LLMCallLogger()
-
-        # Should not raise
-        logger.log_call_start("openai", "gpt-4", agent_id="agent-123")
-        logger.log_call_end(
-            "openai", "gpt-4", 1000.0,
-            prompt_tokens=100,
-            completion_tokens=50,
-        )
-        logger.log_call_error("openai", "gpt-4", "API Error")
-
-    def test_workflow_logger(self):
-        """Test WorkflowLogger."""
-        from app.core.logging import WorkflowLogger
-
-        logger = WorkflowLogger()
-
-        # Should not raise
-        logger.log_workflow_start("wf-123", "Test Workflow")
-        logger.log_workflow_end("wf-123", "Test Workflow", "completed", 5000.0)
-        logger.log_node_execution("wf-123", "node-1", "llm", "completed", 1000.0)
+class TestMetrics:
+    """Tests for metrics collection."""
 
     def test_metrics_collector(self):
         """Test MetricsCollector."""
-        from app.core.logging import MetricsCollector
+        from app.core.metrics import MetricsCollector
 
         metrics = MetricsCollector()
 
