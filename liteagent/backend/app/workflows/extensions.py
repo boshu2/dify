@@ -275,15 +275,17 @@ class ConditionRegistry:
         """
         Evaluate a condition using registered evaluators.
 
-        Falls back to Python eval for simple expressions.
+        Falls back to safe_eval for simple expressions.
         """
+        from app.core.safe_eval import safe_eval_condition
+
         for prefix, evaluator in self._evaluators.items():
             if condition.startswith(prefix):
                 return evaluator(condition[len(prefix):], context)
 
-        # Default: Python expression evaluation
+        # Default: Safe expression evaluation
         try:
-            return bool(eval(condition, {"__builtins__": {}}, context))
+            return safe_eval_condition(condition, context)
         except Exception as e:
             logger.warning(f"Condition evaluation failed: {condition}, error: {e}")
             return False

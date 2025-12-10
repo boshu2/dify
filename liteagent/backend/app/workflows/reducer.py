@@ -270,6 +270,8 @@ class WorkflowReducer:
         output_data: dict[str, Any],
     ) -> list[str]:
         """Determine next nodes based on edges and conditions."""
+        from app.core.safe_eval import safe_eval_condition
+
         next_nodes = []
         outgoing = definition.get_outgoing_edges(node_id)
 
@@ -283,7 +285,7 @@ class WorkflowReducer:
                         **state.variables,
                         **output_data,
                     }
-                    if eval(edge.condition, {"__builtins__": {}}, eval_context):
+                    if safe_eval_condition(edge.condition, eval_context):
                         next_nodes.append(edge.target)
                 except Exception:
                     pass  # Skip edge if condition fails

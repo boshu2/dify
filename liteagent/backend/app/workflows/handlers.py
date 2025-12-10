@@ -8,6 +8,7 @@ import re
 from abc import ABC, abstractmethod
 from typing import Any, AsyncIterator
 
+from app.core.safe_eval import safe_eval, safe_eval_condition
 from app.workflows.types import NodeDefinition
 from app.workflows.state import WorkflowState
 
@@ -135,8 +136,8 @@ class ConditionNodeHandler(NodeHandler):
 
         try:
             eval_context = {"variables": state.variables, **state.variables}
-            result = eval(condition, {"__builtins__": {}}, eval_context)
-            return {"condition_result": bool(result), "branch": "true" if result else "false"}
+            result = safe_eval_condition(condition, eval_context)
+            return {"condition_result": result, "branch": "true" if result else "false"}
         except Exception as e:
             return {"condition_result": False, "branch": "false", "error": str(e)}
 
@@ -687,7 +688,7 @@ class LoopNodeHandler(NodeHandler):
                         **state.variables,
                         **loop_vars,
                     }
-                    if eval(break_condition, {"__builtins__": {}}, eval_context):
+                    if safe_eval_condition(break_condition, eval_context):
                         break
                 except Exception:
                     pass  # Continue on evaluation errors
@@ -822,7 +823,7 @@ class VariableAggregatorNodeHandler(NodeHandler):
             # Evaluate custom expression
             try:
                 eval_context = {**values, **state.variables}
-                result = eval(expression, {"__builtins__": {}}, eval_context)
+                result = safe_eval(expression, eval_context)
             except Exception as e:
                 return {
                     output_var: None,

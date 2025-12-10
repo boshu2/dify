@@ -25,10 +25,8 @@ dependencies = [
     "celery[redis]>=5.3.0",
     # Caching
     "redis>=5.0.0",
-    "aiocache>=0.12.0",
     # Resilience
     "tenacity>=8.2.0",
-    "circuitbreaker>=2.0.0",
     # Auth
     "pyjwt>=2.8.0",
     "passlib[bcrypt]>=1.7.0",
@@ -37,8 +35,7 @@ dependencies = [
     "prometheus-client>=0.19.0",
     # Security
     "cryptography>=42.0.0",
-    # Rate limiting
-    "slowapi>=0.1.9",
+    "simpleeval>=1.0.0",
     # Utilities
     "python-dotenv>=1.0.0",
     "beautifulsoup4>=4.12.0",
