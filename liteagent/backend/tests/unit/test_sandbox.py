@@ -892,3 +892,108 @@ class TestSandboxIntegration:
 
             assert len(manifest["plugins"]) == 1
             assert manifest["plugins"][0]["metadata"]["id"] == "test-plugin"
+
+
+class TestSandboxClient:
+    """Tests for SandboxClient."""
+
+    def test_create_client(self):
+        """Test creating a sandbox client."""
+        from app.core.sandbox.client import SandboxClient
+
+        config = SandboxConfig(remote_endpoint="http://localhost:8194")
+        client = SandboxClient(config)
+
+        assert client.config.remote_endpoint == "http://localhost:8194"
+
+    def test_sandbox_response_dataclass(self):
+        """Test SandboxResponse dataclass."""
+        from app.core.sandbox.client import SandboxResponse
+
+        response = SandboxResponse(
+            success=True,
+            output={"key": "value"},
+            stdout="output",
+        )
+
+        assert response.success is True
+        assert response.output == {"key": "value"}
+        assert response.stdout == "output"
+        assert response.error is None
+
+    def test_sandbox_response_error(self):
+        """Test SandboxResponse with error."""
+        from app.core.sandbox.client import SandboxResponse
+
+        response = SandboxResponse(
+            success=False,
+            error="Connection failed",
+            error_type="ConnectionError",
+        )
+
+        assert response.success is False
+        assert response.error == "Connection failed"
+        assert response.error_type == "ConnectionError"
+
+    def test_extract_result(self):
+        """Test result extraction from output."""
+        from app.core.sandbox.client import SandboxClient
+
+        client = SandboxClient()
+
+        # Test JSON result
+        output = '<<RESULT>>{"key": "value"}<<RESULT>>'
+        result = client._extract_result(output)
+        assert result == {"key": "value"}
+
+        # Test string result
+        output = '<<RESULT>>"hello"<<RESULT>>'
+        result = client._extract_result(output)
+        assert result == "hello"
+
+        # Test no result
+        output = "no markers"
+        result = client._extract_result(output)
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_health_check_connection_error(self):
+        """Test health check returns False on connection error."""
+        from app.core.sandbox.client import SandboxClient
+
+        config = SandboxConfig(remote_endpoint="http://nonexistent:9999")
+        client = SandboxClient(config)
+
+        is_healthy = await client.health_check()
+        assert is_healthy is False
+
+        await client.close()
+
+    @pytest.mark.asyncio
+    async def test_execute_connection_error(self):
+        """Test execute returns error on connection failure."""
+        from app.core.sandbox.client import SandboxClient
+
+        config = SandboxConfig(remote_endpoint="http://nonexistent:9999")
+        client = SandboxClient(config)
+
+        response = await client.execute(
+            language="python3",
+            code="print('hello')",
+        )
+
+        assert response.success is False
+        # Connection errors can manifest as various error types
+        assert response.error_type in ("ConnectionError", "ConnectError", "JSONDecodeError")
+        assert response.error is not None
+
+        await client.close()
+
+    def test_get_sandbox_client_singleton(self):
+        """Test singleton pattern for client."""
+        from app.core.sandbox.client import get_sandbox_client
+
+        client1 = get_sandbox_client()
+        client2 = get_sandbox_client()
+
+        assert client1 is client2

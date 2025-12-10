@@ -6,6 +6,10 @@ Provides isolated execution environment for:
 - JavaScript/Node.js code
 - Jinja2 templates
 - Plugin/tool installation
+
+Architecture:
+- Production: Use SandboxClient to call standalone sandbox service
+- Development: Use CodeExecutor for local execution (RestrictedPython)
 """
 
 from app.core.sandbox.executor import (
@@ -13,6 +17,7 @@ from app.core.sandbox.executor import (
     CodeLanguage,
     ExecutionResult,
     ExecutionError,
+    get_executor,
 )
 from app.core.sandbox.config import SandboxConfig, get_sandbox_config
 from app.core.sandbox.transformers import (
@@ -32,13 +37,23 @@ from app.core.sandbox.plugins import (
     PluginStatus,
     PluginType,
 )
+from app.core.sandbox.client import (
+    SandboxClient,
+    SandboxResponse,
+    get_sandbox_client,
+)
 
 __all__ = [
-    # Executor
+    # Client (for production - calls standalone service)
+    "SandboxClient",
+    "SandboxResponse",
+    "get_sandbox_client",
+    # Executor (for local development)
     "CodeExecutor",
     "CodeLanguage",
     "ExecutionResult",
     "ExecutionError",
+    "get_executor",
     # Config
     "SandboxConfig",
     "get_sandbox_config",

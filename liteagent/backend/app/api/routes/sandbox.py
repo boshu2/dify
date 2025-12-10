@@ -1,5 +1,9 @@
 """
 Sandbox API endpoints for code execution and plugin management.
+
+Architecture:
+- When mode="remote": Uses SandboxClient to call standalone sandbox service
+- When mode="local": Uses embedded CodeExecutor with RestrictedPython
 """
 
 from typing import Any
@@ -14,6 +18,9 @@ from app.core.sandbox import (
     PluginManager,
     PluginStatus,
     PluginType,
+    SandboxClient,
+    get_sandbox_client,
+    get_sandbox_config,
 )
 from app.core.sandbox.executor import get_executor
 from app.core.sandbox.plugins import get_plugin_manager
@@ -69,6 +76,9 @@ async def execute_code(request: ExecuteCodeRequest) -> ExecuteCodeResponse:
     Execute code in the sandbox.
 
     Supports Python 3, JavaScript, and Jinja2 templates.
+
+    Uses standalone sandbox service when mode=remote (recommended for production),
+    or embedded executor when mode=local (for development).
     """
     try:
         language = CodeLanguage(request.language)
@@ -79,38 +89,63 @@ async def execute_code(request: ExecuteCodeRequest) -> ExecuteCodeResponse:
             f"Supported: {[l.value for l in CodeLanguage]}",
         )
 
-    executor = get_executor()
+    config = get_sandbox_config()
 
-    result = await executor.execute(
-        language=language,
-        code=request.code,
-        inputs=request.inputs,
-        preload=request.preload,
-        enable_network=request.enable_network,
-        timeout=request.timeout,
-    )
+    if config.mode == "remote":
+        # Production: Use standalone sandbox service
+        client = get_sandbox_client()
 
-    # Validate output
-    if result.success and result.output is not None:
-        validator = OutputValidator()
-        validation_result = validator.validate(result.output)
+        response = await client.execute(
+            language=language.value,
+            code=request.code,
+            inputs=request.inputs,
+            preload=request.preload,
+            enable_network=request.enable_network or False,
+        )
 
-        if not validation_result.valid:
-            result.success = False
-            result.error = validation_result.error
-            result.error_type = "ValidationError"
-        else:
-            result.output = validation_result.value
+        return ExecuteCodeResponse(
+            success=response.success,
+            output=response.output,
+            stdout=response.stdout,
+            stderr=response.stderr,
+            error=response.error,
+            error_type=response.error_type,
+            execution_time_ms=response.execution_time_ms,
+        )
+    else:
+        # Development: Use embedded executor
+        executor = get_executor()
 
-    return ExecuteCodeResponse(
-        success=result.success,
-        output=result.output,
-        stdout=result.stdout,
-        stderr=result.stderr,
-        error=result.error,
-        error_type=result.error_type,
-        execution_time_ms=result.execution_time_ms,
-    )
+        result = await executor.execute(
+            language=language,
+            code=request.code,
+            inputs=request.inputs,
+            preload=request.preload,
+            enable_network=request.enable_network,
+            timeout=request.timeout,
+        )
+
+        # Validate output
+        if result.success and result.output is not None:
+            validator = OutputValidator()
+            validation_result = validator.validate(result.output)
+
+            if not validation_result.valid:
+                result.success = False
+                result.error = validation_result.error
+                result.error_type = "ValidationError"
+            else:
+                result.output = validation_result.value
+
+        return ExecuteCodeResponse(
+            success=result.success,
+            output=result.output,
+            stdout=result.stdout,
+            stderr=result.stderr,
+            error=result.error,
+            error_type=result.error_type,
+            execution_time_ms=result.execution_time_ms,
+        )
 
 
 @router.get("/languages")
@@ -311,11 +346,9 @@ async def get_plugin_tools(plugin_id: str) -> list[dict[str, Any]]:
 @router.get("/health")
 async def sandbox_health() -> dict[str, Any]:
     """Check sandbox health."""
-    from app.core.sandbox.config import get_sandbox_config
-
     config = get_sandbox_config()
 
-    return {
+    health_data = {
         "status": "healthy",
         "mode": config.mode,
         "languages": [l.value for l in CodeLanguage],
@@ -323,6 +356,19 @@ async def sandbox_health() -> dict[str, Any]:
         "execution_timeout": config.execution_timeout,
         "network_enabled": config.enable_network,
     }
+
+    # Check remote sandbox service if in remote mode
+    if config.mode == "remote":
+        client = get_sandbox_client()
+        is_healthy = await client.health_check()
+        health_data["remote_service"] = {
+            "endpoint": config.remote_endpoint,
+            "healthy": is_healthy,
+        }
+        if not is_healthy:
+            health_data["status"] = "degraded"
+
+    return health_data
 
 
 @router.get("/config")
