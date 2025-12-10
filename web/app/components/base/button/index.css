@@ -3,6 +3,7 @@
 @layer components {
   .btn {
     @apply inline-flex justify-center items-center cursor-pointer whitespace-nowrap;
+    @apply transition-all duration-200 ease-out;
   }
 
   .btn-disabled {
@@ -19,6 +20,188 @@
 
   .btn-large {
     @apply px-4 h-9 rounded-[10px] text-sm font-semibold;
+  }
+
+  /* ============================================
+   * n8n-INSPIRED BUTTON VARIANTS
+   * Modern, dark-theme optimized with glass-morphism
+   * ============================================ */
+
+  /* n8n Orange Primary - Bold, attention-grabbing */
+  .btn-n8n-primary {
+    @apply
+    shadow-lg
+    bg-n8n-orange
+    border border-white/15
+    hover:bg-n8n-orange-light
+    hover:border-white/25
+    hover:shadow-xl
+    hover:-translate-y-0.5
+    active:translate-y-0
+    active:shadow-md
+    text-white/95;
+  }
+
+  .btn-n8n-primary.btn-disabled {
+    @apply
+    shadow-none
+    bg-n8n-orange/20
+    border-white/8
+    text-white/30
+    hover:translate-y-0;
+  }
+
+  /* n8n Purple Accent - For secondary emphasis */
+  .btn-n8n-accent {
+    @apply
+    shadow-lg
+    bg-n8n-purple
+    border border-white/15
+    hover:bg-n8n-purple-light
+    hover:border-white/25
+    hover:shadow-xl
+    hover:-translate-y-0.5
+    active:translate-y-0
+    active:shadow-md
+    text-white/95;
+  }
+
+  .btn-n8n-accent.btn-disabled {
+    @apply
+    shadow-none
+    bg-n8n-purple/20
+    border-white/8
+    text-white/30
+    hover:translate-y-0;
+  }
+
+  /* n8n Glass Secondary - Frosted glass effect */
+  .btn-n8n-glass {
+    @apply
+    border border-white/10
+    shadow-sm
+    backdrop-blur-md
+    bg-white/8
+    hover:bg-white/12
+    hover:border-white/15
+    hover:shadow-md
+    text-n8n-lavender;
+  }
+
+  .btn-n8n-glass.btn-disabled {
+    @apply
+    backdrop-blur-sm
+    bg-white/3
+    border-white/5
+    text-n8n-lavender/30;
+  }
+
+  /* n8n Ghost - Minimal footprint, purple glow on hover */
+  .btn-n8n-ghost {
+    @apply
+    bg-transparent
+    hover:bg-n8n-purple/15
+    text-n8n-lavender
+    hover:text-white/90;
+  }
+
+  .btn-n8n-ghost.btn-disabled {
+    @apply
+    text-n8n-lavender/30;
+  }
+
+  /* n8n Outline - Clear border, fills on hover */
+  .btn-n8n-outline {
+    @apply
+    border border-n8n-purple/30
+    bg-transparent
+    hover:bg-n8n-purple/10
+    hover:border-n8n-purple/50
+    text-n8n-lavender
+    hover:text-white/90;
+  }
+
+  .btn-n8n-outline.btn-disabled {
+    @apply
+    border-n8n-purple/15
+    text-n8n-lavender/30;
+  }
+
+  /* n8n Destructive - Red warning button */
+  .btn-n8n-destructive {
+    @apply
+    shadow-lg
+    bg-red-600
+    border border-white/12
+    hover:bg-red-500
+    hover:border-white/20
+    hover:shadow-xl
+    hover:-translate-y-0.5
+    active:translate-y-0
+    text-white/95;
+  }
+
+  .btn-n8n-destructive.btn-disabled {
+    @apply
+    shadow-none
+    bg-red-600/20
+    border-white/8
+    text-white/30
+    hover:translate-y-0;
+  }
+
+  /* n8n Success - Green confirmation button */
+  .btn-n8n-success {
+    @apply
+    shadow-lg
+    bg-emerald-600
+    border border-white/12
+    hover:bg-emerald-500
+    hover:border-white/20
+    hover:shadow-xl
+    hover:-translate-y-0.5
+    active:translate-y-0
+    text-white/95;
+  }
+
+  .btn-n8n-success.btn-disabled {
+    @apply
+    shadow-none
+    bg-emerald-600/20
+    border-white/8
+    text-white/30
+    hover:translate-y-0;
+  }
+
+  /* n8n Icon Button - Square icon-only buttons */
+  .btn-n8n-icon {
+    @apply
+    !p-0 aspect-square
+    bg-white/6
+    border border-white/10
+    hover:bg-n8n-purple/15
+    hover:border-n8n-purple/30
+    text-n8n-lavender
+    hover:text-white/90;
+  }
+
+  .btn-n8n-icon.btn-small {
+    @apply w-6 h-6;
+  }
+
+  .btn-n8n-icon.btn-medium {
+    @apply w-8 h-8;
+  }
+
+  .btn-n8n-icon.btn-large {
+    @apply w-9 h-9;
+  }
+
+  .btn-n8n-icon.btn-disabled {
+    @apply
+    bg-white/3
+    border-white/5
+    text-n8n-lavender/30;
   }
 
   .btn-primary {

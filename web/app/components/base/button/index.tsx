@@ -16,6 +16,15 @@ const buttonVariants = cva(
         'ghost': 'btn-ghost',
         'ghost-accent': 'btn-ghost-accent',
         'tertiary': 'btn-tertiary',
+        // n8n-inspired variants
+        'n8n-primary': 'btn-n8n-primary',
+        'n8n-accent': 'btn-n8n-accent',
+        'n8n-glass': 'btn-n8n-glass',
+        'n8n-ghost': 'btn-n8n-ghost',
+        'n8n-outline': 'btn-n8n-outline',
+        'n8n-destructive': 'btn-n8n-destructive',
+        'n8n-success': 'btn-n8n-success',
+        'n8n-icon': 'btn-n8n-icon',
       },
       size: {
         small: 'btn-small',

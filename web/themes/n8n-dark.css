@@ -1,0 +1,374 @@
+/**
+ * n8n-inspired Dark Theme for Dify
+ *
+ * Based on n8n brand guidelines:
+ * - Primary Orange: #EE4F27
+ * - Purple Accent: #6B21EF
+ * - Deep Navy backgrounds: #0E0918, #1B1728, #1F192A
+ * - Lavender Gray text: #C4BBD3
+ */
+
+html[data-theme="n8n-dark"] {
+  /* ============================================
+   * CORE BACKGROUNDS
+   * ============================================ */
+  --color-background-body: #0E0918;
+  --color-background-default: #1B1728;
+  --color-background-default-hover: #252233;
+  --color-background-default-subtle: #1F192A;
+  --color-background-default-dimm: #14101f;
+  --color-background-default-burn: #0a0610;
+  --color-background-default-dodge: #2a2440;
+  --color-background-section: #1F192A;
+  --color-background-section-burn: #14101f;
+  --color-background-soft: #252233;
+  --color-background-muted: #14101f;
+  --color-background-sidenav-bg: #0E0918;
+  --color-background-overlay: rgb(14 9 24 / 0.8);
+  --color-background-overlay-alt: rgb(31 25 42 / 0.95);
+  --color-background-overlay-destructive: rgb(254 243 242 / 0.97);
+
+  /* ============================================
+   * WORKFLOW CANVAS - n8n style
+   * ============================================ */
+  --color-workflow-canvas-bg: #0E0918;
+  --color-workflow-canvas-grid: #7e7e7e;
+  --color-workflow-node-bg: #342c3e;
+  --color-workflow-node-bg-hover: #3d3549;
+  --color-workflow-node-border: rgba(255, 255, 255, 0.1);
+  --color-workflow-node-border-selected: #6B21EF;
+  --color-workflow-node-shadow: rgba(0, 0, 0, 0.4);
+  --color-workflow-edge: #6B21EF;
+  --color-workflow-edge-animated: #EE4F27;
+  --color-workflow-minimap-bg: #1B1728;
+  --color-workflow-minimap-node: #6B21EF;
+
+  /* ============================================
+   * INPUT COMPONENTS
+   * ============================================ */
+  --color-components-input-bg-normal: rgb(255 255 255 / 0.06);
+  --color-components-input-text-placeholder: #C4BBD3;
+  --color-components-input-bg-hover: rgb(255 255 255 / 0.08);
+  --color-components-input-bg-active: rgb(255 255 255 / 0.1);
+  --color-components-input-border-active: #6B21EF;
+  --color-components-input-border-destructive: #f97066;
+  --color-components-input-text-filled: #f4f4f5;
+  --color-components-input-bg-destructive: rgb(255 255 255 / 0.01);
+  --color-components-input-bg-disabled: rgb(255 255 255 / 0.03);
+  --color-components-input-text-disabled: rgb(196 187 211 / 0.3);
+  --color-components-input-text-filled-disabled: rgb(196 187 211 / 0.6);
+  --color-components-input-border-hover: #464646;
+  --color-components-input-border-active-prompt-1: #EE4F27;
+  --color-components-input-border-active-prompt-2: #6B21EF;
+
+  /* ============================================
+   * KBD & TOOLTIP
+   * ============================================ */
+  --color-components-kbd-bg-gray: rgb(255 255 255 / 0.05);
+  --color-components-kbd-bg-white: rgb(255 255 255 / 0.12);
+  --color-components-tooltip-bg: rgb(31 25 42 / 0.98);
+
+  /* ============================================
+   * PRIMARY BUTTON - n8n Orange
+   * ============================================ */
+  --color-components-button-primary-text: rgb(255 255 255 / 0.95);
+  --color-components-button-primary-bg: #EE4F27;
+  --color-components-button-primary-border: rgb(255 255 255 / 0.15);
+  --color-components-button-primary-bg-hover: #F96E49;
+  --color-components-button-primary-border-hover: rgb(255 255 255 / 0.25);
+  --color-components-button-primary-bg-disabled: rgb(238 79 39 / 0.2);
+  --color-components-button-primary-border-disabled: rgb(255 255 255 / 0.08);
+  --color-components-button-primary-text-disabled: rgb(255 255 255 / 0.3);
+
+  /* ============================================
+   * SECONDARY BUTTON
+   * ============================================ */
+  --color-components-button-secondary-text: #C4BBD3;
+  --color-components-button-secondary-text-disabled: rgb(196 187 211 / 0.3);
+  --color-components-button-secondary-bg: rgb(255 255 255 / 0.08);
+  --color-components-button-secondary-bg-hover: rgb(255 255 255 / 0.12);
+  --color-components-button-secondary-bg-disabled: rgb(255 255 255 / 0.03);
+  --color-components-button-secondary-border: rgb(255 255 255 / 0.1);
+  --color-components-button-secondary-border-hover: rgb(255 255 255 / 0.15);
+  --color-components-button-secondary-border-disabled: rgb(255 255 255 / 0.05);
+
+  /* ============================================
+   * TERTIARY BUTTON
+   * ============================================ */
+  --color-components-button-tertiary-text: #C4BBD3;
+  --color-components-button-tertiary-text-disabled: rgb(196 187 211 / 0.3);
+  --color-components-button-tertiary-bg: rgb(255 255 255 / 0.06);
+  --color-components-button-tertiary-bg-hover: rgb(255 255 255 / 0.1);
+  --color-components-button-tertiary-bg-disabled: rgb(255 255 255 / 0.03);
+
+  /* ============================================
+   * GHOST BUTTON
+   * ============================================ */
+  --color-components-button-ghost-text: #C4BBD3;
+  --color-components-button-ghost-text-disabled: rgb(196 187 211 / 0.3);
+  --color-components-button-ghost-bg-hover: rgb(107 33 239 / 0.15);
+
+  /* ============================================
+   * DESTRUCTIVE BUTTONS
+   * ============================================ */
+  --color-components-button-destructive-primary-text: rgb(255 255 255 / 0.95);
+  --color-components-button-destructive-primary-text-disabled: rgb(255 255 255 / 0.2);
+  --color-components-button-destructive-primary-bg: #d92d20;
+  --color-components-button-destructive-primary-bg-hover: #f04438;
+  --color-components-button-destructive-primary-bg-disabled: rgb(240 68 56 / 0.14);
+  --color-components-button-destructive-primary-border: rgb(255 255 255 / 0.12);
+  --color-components-button-destructive-primary-border-hover: rgb(255 255 255 / 0.2);
+  --color-components-button-destructive-primary-border-disabled: rgb(255 255 255 / 0.08);
+
+  --color-components-button-destructive-secondary-text: #f97066;
+  --color-components-button-destructive-secondary-text-disabled: rgb(240 68 56 / 0.2);
+  --color-components-button-destructive-secondary-bg: rgb(255 255 255 / 0.08);
+  --color-components-button-destructive-secondary-bg-hover: rgb(240 68 56 / 0.14);
+  --color-components-button-destructive-secondary-bg-disabled: rgb(240 68 56 / 0.08);
+  --color-components-button-destructive-secondary-border: rgb(255 255 255 / 0.08);
+  --color-components-button-destructive-secondary-border-hover: rgb(255 255 255 / 0.12);
+  --color-components-button-destructive-secondary-border-disabled: rgb(240 68 56 / 0.08);
+
+  --color-components-button-destructive-tertiary-text: #f97066;
+  --color-components-button-destructive-tertiary-text-disabled: rgb(240 68 56 / 0.2);
+  --color-components-button-destructive-tertiary-bg: rgb(240 68 56 / 0.14);
+  --color-components-button-destructive-tertiary-bg-hover: rgb(240 68 56 / 0.25);
+  --color-components-button-destructive-tertiary-bg-disabled: rgb(240 68 56 / 0.08);
+
+  --color-components-button-destructive-ghost-text: #f97066;
+  --color-components-button-destructive-ghost-text-disabled: rgb(240 68 56 / 0.2);
+  --color-components-button-destructive-ghost-bg-hover: rgb(240 68 56 / 0.14);
+
+  /* ============================================
+   * ACCENT BUTTON - n8n Purple
+   * ============================================ */
+  --color-components-button-secondary-accent-text: #C4BBD3;
+  --color-components-button-secondary-accent-text-disabled: rgb(196 187 211 / 0.3);
+  --color-components-button-secondary-accent-bg: rgb(107 33 239 / 0.15);
+  --color-components-button-secondary-accent-bg-hover: rgb(107 33 239 / 0.25);
+  --color-components-button-secondary-accent-bg-disabled: rgb(107 33 239 / 0.08);
+  --color-components-button-secondary-accent-border: rgb(107 33 239 / 0.3);
+  --color-components-button-secondary-accent-border-hover: rgb(107 33 239 / 0.5);
+  --color-components-button-secondary-accent-border-disabled: rgb(107 33 239 / 0.15);
+
+  --color-components-button-indigo-bg: #6B21EF;
+  --color-components-button-indigo-bg-hover: #7c3aed;
+  --color-components-button-indigo-bg-disabled: rgb(107 33 239 / 0.2);
+
+  /* ============================================
+   * CHECKBOX & RADIO - Purple accent
+   * ============================================ */
+  --color-components-checkbox-icon: rgb(255 255 255 / 0.95);
+  --color-components-checkbox-icon-disabled: rgb(255 255 255 / 0.2);
+  --color-components-checkbox-bg: #6B21EF;
+  --color-components-checkbox-bg-hover: #7c3aed;
+  --color-components-checkbox-bg-disabled: rgb(255 255 255 / 0.03);
+  --color-components-checkbox-border: rgb(196 187 211 / 0.4);
+  --color-components-checkbox-border-hover: rgb(196 187 211 / 0.6);
+  --color-components-checkbox-border-disabled: rgb(255 255 255 / 0.01);
+  --color-components-checkbox-bg-unchecked: rgb(255 255 255 / 0.03);
+  --color-components-checkbox-bg-unchecked-hover: rgb(255 255 255 / 0.05);
+  --color-components-checkbox-bg-disabled-checked: rgb(107 33 239 / 0.2);
+
+  --color-components-radio-border-checked: #6B21EF;
+  --color-components-radio-border-checked-hover: #7c3aed;
+  --color-components-radio-border-checked-disabled: rgb(107 33 239 / 0.2);
+  --color-components-radio-bg-disabled: rgb(255 255 255 / 0.03);
+  --color-components-radio-border: rgb(196 187 211 / 0.4);
+  --color-components-radio-border-hover: rgb(196 187 211 / 0.6);
+  --color-components-radio-border-disabled: rgb(255 255 255 / 0.01);
+  --color-components-radio-bg: rgb(255 255 255 / 0);
+  --color-components-radio-bg-hover: rgb(255 255 255 / 0.05);
+
+  /* ============================================
+   * TOGGLE - Purple accent
+   * ============================================ */
+  --color-components-toggle-knob: #f4f4f5;
+  --color-components-toggle-knob-disabled: rgb(255 255 255 / 0.2);
+  --color-components-toggle-bg: #6B21EF;
+  --color-components-toggle-bg-hover: #7c3aed;
+  --color-components-toggle-bg-disabled: rgb(255 255 255 / 0.08);
+  --color-components-toggle-bg-unchecked: rgb(255 255 255 / 0.2);
+  --color-components-toggle-bg-unchecked-hover: rgb(255 255 255 / 0.3);
+  --color-components-toggle-bg-unchecked-disabled: rgb(255 255 255 / 0.08);
+  --color-components-toggle-knob-hover: #fefefe;
+
+  /* ============================================
+   * CARD - Dark purple-gray
+   * ============================================ */
+  --color-components-card-bg: #1F192A;
+  --color-components-card-border: rgb(255 255 255 / 0.06);
+  --color-components-card-bg-alt: #252233;
+  --color-components-card-bg-transparent: rgb(31 25 42 / 0);
+  --color-components-card-bg-alt-transparent: rgb(37 34 51 / 0);
+
+  /* ============================================
+   * MENU ITEM
+   * ============================================ */
+  --color-components-menu-item-text: #C4BBD3;
+  --color-components-menu-item-text-active: rgb(255 255 255 / 0.95);
+  --color-components-menu-item-text-hover: rgb(196 187 211 / 0.9);
+  --color-components-menu-item-text-active-accent: rgb(255 255 255 / 0.95);
+  --color-components-menu-item-bg-active: rgb(107 33 239 / 0.2);
+  --color-components-menu-item-bg-hover: rgb(107 33 239 / 0.1);
+
+  /* ============================================
+   * PANEL - Glass-morphism style
+   * ============================================ */
+  --color-components-panel-bg: #1F192A;
+  --color-components-panel-bg-blur: rgb(31 25 42 / 0.85);
+  --color-components-panel-border: rgb(196 187 211 / 0.12);
+  --color-components-panel-border-subtle: rgb(196 187 211 / 0.08);
+  --color-components-panel-gradient-2: #1B1728;
+  --color-components-panel-gradient-1: #252233;
+  --color-components-panel-bg-alt: #1B1728;
+  --color-components-panel-on-panel-item-bg: #252233;
+  --color-components-panel-on-panel-item-bg-hover: #2f2a3d;
+  --color-components-panel-on-panel-item-bg-alt: #2f2a3d;
+  --color-components-panel-on-panel-item-bg-transparent: rgb(37 34 51 / 0.95);
+  --color-components-panel-on-panel-item-bg-hover-transparent: rgb(47 42 61 / 0);
+  --color-components-panel-on-panel-item-bg-destructive-hover-transparent: rgb(255 251 250 / 0);
+  --color-components-panel-bg-transparent: rgb(31 25 42 / 0);
+
+  /* ============================================
+   * MAIN NAV - Dark sidebar
+   * ============================================ */
+  --color-components-main-nav-nav-button-text: #C4BBD3;
+  --color-components-main-nav-nav-button-text-active: #f4f4f5;
+  --color-components-main-nav-nav-button-bg: rgb(255 255 255 / 0);
+  --color-components-main-nav-nav-button-bg-active: rgb(107 33 239 / 0.2);
+  --color-components-main-nav-nav-button-border: rgb(255 255 255 / 0.08);
+  --color-components-main-nav-nav-button-bg-hover: rgb(107 33 239 / 0.1);
+  --color-components-main-nav-nav-user-border: rgb(255 255 255 / 0.05);
+
+  /* ============================================
+   * SLIDER - Purple accent
+   * ============================================ */
+  --color-components-slider-knob: #f4f4f5;
+  --color-components-slider-knob-hover: #fefefe;
+  --color-components-slider-knob-disabled: rgb(255 255 255 / 0.2);
+  --color-components-slider-range: #6B21EF;
+  --color-components-slider-track: rgb(255 255 255 / 0.2);
+  --color-components-slider-knob-border-hover: rgb(16 24 40 / 0.3);
+  --color-components-slider-knob-border: rgb(16 24 40 / 0.2);
+
+  /* ============================================
+   * SEGMENTED CONTROL
+   * ============================================ */
+  --color-components-segmented-control-item-active-bg: rgb(255 255 255 / 0.08);
+  --color-components-segmented-control-item-active-border: rgb(196 187 211 / 0.08);
+  --color-components-segmented-control-bg-normal: rgb(14 9 24 / 0.7);
+  --color-components-segmented-control-item-active-accent-bg: rgb(107 33 239 / 0.2);
+  --color-components-segmented-control-item-active-accent-border: rgb(107 33 239 / 0.3);
+
+  /* ============================================
+   * OPTION CARD
+   * ============================================ */
+  --color-components-option-card-option-bg: rgb(196 187 211 / 0.04);
+  --color-components-option-card-option-selected-bg: rgb(255 255 255 / 0.05);
+  --color-components-option-card-option-selected-border: #6B21EF;
+  --color-components-option-card-option-border: rgb(196 187 211 / 0.2);
+  --color-components-option-card-option-bg-hover: rgb(196 187 211 / 0.1);
+  --color-components-option-card-option-border-hover: rgb(196 187 211 / 0.3);
+
+  /* ============================================
+   * TAB - Purple accent
+   * ============================================ */
+  --color-components-tab-active: #6B21EF;
+
+  /* ============================================
+   * BADGE & STATUS
+   * ============================================ */
+  --color-components-badge-white-to-dark: rgb(14 9 24 / 0.8);
+  --color-components-badge-status-light-success-bg: #35A670;
+  --color-components-badge-status-light-success-border-inner: #47cd89;
+  --color-components-badge-status-light-success-halo: rgb(53 166 112 / 0.3);
+  --color-components-badge-status-light-border-outer: #1F192A;
+  --color-components-badge-status-light-high-light: rgb(255 255 255 / 0.3);
+  --color-components-badge-status-light-warning-bg: #f79009;
+  --color-components-badge-status-light-warning-border-inner: #fdb022;
+  --color-components-badge-status-light-warning-halo: rgb(247 144 9 / 0.3);
+  --color-components-badge-status-light-error-bg: #f04438;
+  --color-components-badge-status-light-error-border-inner: #f97066;
+  --color-components-badge-status-light-error-halo: rgb(240 68 56 / 0.3);
+  --color-components-badge-status-light-normal-bg: #EE4F27;
+  --color-components-badge-status-light-normal-border-inner: #F96E49;
+  --color-components-badge-status-light-normal-halo: rgb(238 79 39 / 0.3);
+
+  /* ============================================
+   * TEXT COLORS
+   * ============================================ */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #C4BBD3;
+  --color-text-tertiary: rgb(196 187 211 / 0.6);
+  --color-text-quaternary: rgb(196 187 211 / 0.4);
+  --color-text-placeholder: rgb(196 187 211 / 0.5);
+  --color-text-disabled: rgb(196 187 211 / 0.3);
+  --color-text-primary-on-surface: #ffffff;
+  --color-text-secondary-on-surface: #C4BBD3;
+  --color-text-tertiary-on-surface: rgb(196 187 211 / 0.6);
+  --color-text-accent: #EE4F27;
+  --color-text-accent-secondary: #6B21EF;
+  --color-text-success: #35A670;
+  --color-text-warning: #f79009;
+  --color-text-destructive: #f04438;
+  --color-text-warning-secondary: #fdb022;
+  --color-text-destructive-secondary: #f97066;
+  --color-text-success-secondary: #47cd89;
+  --color-text-accent-light-mode-only: #6B21EF;
+  --color-text-empty-state-icon: rgb(196 187 211 / 0.4);
+
+  /* ============================================
+   * DIVIDER & BORDER
+   * ============================================ */
+  --color-divider-subtle: rgb(196 187 211 / 0.06);
+  --color-divider-regular: rgb(196 187 211 / 0.1);
+  --color-divider-deep: rgb(196 187 211 / 0.14);
+  --color-divider-burn: rgb(196 187 211 / 0.2);
+  --color-divider-intense: rgb(196 187 211 / 0.3);
+
+  /* ============================================
+   * STATE COLORS
+   * ============================================ */
+  --color-state-accent-active: rgb(107 33 239 / 0.12);
+  --color-state-accent-hover: rgb(107 33 239 / 0.08);
+  --color-state-accent-solid: #6B21EF;
+  --color-state-accent-hover-alt: rgb(107 33 239 / 0.1);
+  --color-state-accent-focus: rgb(107 33 239 / 0.14);
+  --color-state-accent-solid-hover: #7c3aed;
+
+  --color-state-destructive-active: rgb(240 68 56 / 0.12);
+  --color-state-destructive-hover: rgb(240 68 56 / 0.08);
+  --color-state-destructive-solid: #f04438;
+  --color-state-destructive-hover-alt: rgb(240 68 56 / 0.1);
+  --color-state-destructive-focus: rgb(240 68 56 / 0.14);
+  --color-state-destructive-solid-hover: #f97066;
+
+  --color-state-success-active: rgb(53 166 112 / 0.12);
+  --color-state-success-hover: rgb(53 166 112 / 0.08);
+  --color-state-success-solid: #35A670;
+  --color-state-success-hover-alt: rgb(53 166 112 / 0.1);
+  --color-state-success-focus: rgb(53 166 112 / 0.14);
+  --color-state-success-solid-hover: #47cd89;
+
+  --color-state-warning-active: rgb(247 144 9 / 0.12);
+  --color-state-warning-hover: rgb(247 144 9 / 0.08);
+  --color-state-warning-solid: #f79009;
+  --color-state-warning-hover-alt: rgb(247 144 9 / 0.1);
+  --color-state-warning-focus: rgb(247 144 9 / 0.14);
+  --color-state-warning-solid-hover: #fdb022;
+
+  /* ============================================
+   * SPECIAL EFFECTS - Glass-morphism
+   * ============================================ */
+  --color-effects-highlight: rgb(255 255 255 / 0.04);
+  --color-effects-highlight-lightmode-off: rgb(255 255 255 / 0.04);
+
+  /* ============================================
+   * AVATAR & ICON
+   * ============================================ */
+  --color-avatar-default-avatar-bg: #252233;
+  --color-avatar-avatar-bg-border: rgb(196 187 211 / 0.15);
+  --color-avatar-bg-model-middle: #1F192A;
+  --color-avatar-bg-model-outer: #0E0918;
+}

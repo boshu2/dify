@@ -1,0 +1,416 @@
+/* ============================================
+ * n8n-INSPIRED INPUT STYLES
+ * Glass-morphism inputs with purple focus accent
+ * ============================================ */
+
+/* Base n8n Input */
+.input-n8n {
+  @apply
+  w-full
+  appearance-none
+  px-3 py-2
+  rounded-lg
+  border border-white/10
+  bg-white/6
+  text-white/90
+  placeholder:text-n8n-lavender/50
+  caret-n8n-purple
+  outline-none
+  transition-all duration-200;
+}
+
+.input-n8n:hover:not(:disabled) {
+  @apply
+  border-white/15
+  bg-white/8;
+}
+
+.input-n8n:focus:not(:disabled) {
+  @apply
+  border-n8n-purple/50
+  bg-white/10;
+  box-shadow: 0 0 0 3px rgba(107, 33, 239, 0.15);
+}
+
+.input-n8n:disabled {
+  @apply
+  cursor-not-allowed
+  bg-white/3
+  text-white/30
+  border-white/5
+  placeholder:text-white/20;
+}
+
+/* n8n Input with Error */
+.input-n8n-error {
+  @apply input-n8n;
+  @apply border-red-500/50 bg-red-500/5;
+}
+
+.input-n8n-error:focus:not(:disabled) {
+  @apply border-red-500/70;
+  box-shadow: 0 0 0 3px rgba(240, 68, 56, 0.15);
+}
+
+/* n8n Input with Success */
+.input-n8n-success {
+  @apply input-n8n;
+  @apply border-emerald-500/50 bg-emerald-500/5;
+}
+
+.input-n8n-success:focus:not(:disabled) {
+  @apply border-emerald-500/70;
+  box-shadow: 0 0 0 3px rgba(53, 166, 112, 0.15);
+}
+
+/* n8n Input Sizes */
+.input-n8n-sm {
+  @apply px-2.5 py-1.5 text-sm rounded-md;
+}
+
+.input-n8n-md {
+  @apply px-3 py-2 text-sm rounded-lg;
+}
+
+.input-n8n-lg {
+  @apply px-4 py-3 text-base rounded-xl;
+}
+
+/* n8n Input Group - Input with icons/addons */
+.input-n8n-group {
+  @apply relative flex items-center;
+}
+
+.input-n8n-group .input-n8n {
+  @apply flex-1;
+}
+
+.input-n8n-group-icon-left {
+  @apply absolute left-3 z-10 text-n8n-lavender/60;
+}
+
+.input-n8n-group-icon-right {
+  @apply absolute right-3 z-10 text-n8n-lavender/60;
+}
+
+.input-n8n-group-has-left-icon .input-n8n {
+  @apply pl-10;
+}
+
+.input-n8n-group-has-right-icon .input-n8n {
+  @apply pr-10;
+}
+
+/* n8n Input Addon (text or button attached to input) */
+.input-n8n-addon {
+  @apply
+  flex items-center
+  px-3 py-2
+  bg-white/4
+  border border-white/10
+  text-n8n-lavender/80
+  text-sm;
+}
+
+.input-n8n-addon-left {
+  @apply rounded-l-lg border-r-0;
+}
+
+.input-n8n-addon-right {
+  @apply rounded-r-lg border-l-0;
+}
+
+.input-n8n-with-addon-left {
+  @apply rounded-l-none;
+}
+
+.input-n8n-with-addon-right {
+  @apply rounded-r-none;
+}
+
+/* n8n Textarea */
+.textarea-n8n {
+  @apply input-n8n;
+  @apply min-h-[100px] resize-y;
+}
+
+/* n8n Input Label */
+.input-n8n-label {
+  @apply
+  block mb-1.5
+  text-sm font-medium
+  text-n8n-lavender;
+}
+
+.input-n8n-label-required::after {
+  content: ' *';
+  @apply text-n8n-orange;
+}
+
+/* n8n Input Helper Text */
+.input-n8n-helper {
+  @apply
+  mt-1.5
+  text-xs
+  text-n8n-lavender/60;
+}
+
+.input-n8n-helper-error {
+  @apply text-red-400;
+}
+
+.input-n8n-helper-success {
+  @apply text-emerald-400;
+}
+
+/* ============================================
+ * n8n-INSPIRED SELECT STYLES
+ * ============================================ */
+
+/* Base n8n Select */
+.select-n8n {
+  @apply
+  w-full
+  appearance-none
+  px-3 py-2 pr-10
+  rounded-lg
+  border border-white/10
+  bg-white/6
+  text-white/90
+  cursor-pointer
+  outline-none
+  transition-all duration-200;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23C4BBD3'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m19 9-7 7-7-7'/%3E%3C/svg%3E");
+  background-position: right 0.75rem center;
+  background-repeat: no-repeat;
+  background-size: 1rem;
+}
+
+.select-n8n:hover:not(:disabled) {
+  @apply
+  border-white/15
+  bg-white/8;
+}
+
+.select-n8n:focus:not(:disabled) {
+  @apply
+  border-n8n-purple/50
+  bg-white/10;
+  box-shadow: 0 0 0 3px rgba(107, 33, 239, 0.15);
+}
+
+.select-n8n:disabled {
+  @apply
+  cursor-not-allowed
+  bg-white/3
+  text-white/30
+  border-white/5;
+  opacity: 0.6;
+}
+
+/* n8n Select Option styling (for native select) */
+.select-n8n option {
+  @apply bg-n8n-navy-800 text-white/90 py-2;
+}
+
+/* n8n Custom Select Dropdown (for custom implementations) */
+.select-n8n-dropdown {
+  @apply
+  absolute z-50
+  mt-1 w-full
+  rounded-lg
+  border border-white/10
+  bg-n8n-navy-800/95
+  backdrop-blur-xl
+  shadow-2xl
+  overflow-hidden;
+  animation: slideDown 0.15s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.select-n8n-option {
+  @apply
+  px-3 py-2.5
+  text-n8n-lavender
+  cursor-pointer
+  transition-colors duration-100;
+}
+
+.select-n8n-option:hover {
+  @apply bg-n8n-purple/15 text-white/90;
+}
+
+.select-n8n-option-selected {
+  @apply bg-n8n-purple/20 text-white/95;
+}
+
+.select-n8n-option-disabled {
+  @apply
+  text-n8n-lavender/30
+  cursor-not-allowed;
+}
+
+.select-n8n-option-disabled:hover {
+  @apply bg-transparent;
+}
+
+/* n8n Select Sizes */
+.select-n8n-sm {
+  @apply px-2.5 py-1.5 text-sm rounded-md pr-8;
+  background-position: right 0.5rem center;
+  background-size: 0.875rem;
+}
+
+.select-n8n-md {
+  @apply px-3 py-2 text-sm rounded-lg pr-10;
+}
+
+.select-n8n-lg {
+  @apply px-4 py-3 text-base rounded-xl pr-12;
+  background-position: right 1rem center;
+  background-size: 1.25rem;
+}
+
+/* ============================================
+ * n8n-INSPIRED CHECKBOX & RADIO
+ * ============================================ */
+
+/* n8n Checkbox */
+.checkbox-n8n {
+  @apply
+  h-4 w-4
+  appearance-none
+  rounded
+  border border-n8n-lavender/40
+  bg-white/5
+  cursor-pointer
+  transition-all duration-200;
+}
+
+.checkbox-n8n:hover:not(:disabled) {
+  @apply border-n8n-lavender/60 bg-white/8;
+}
+
+.checkbox-n8n:checked {
+  @apply
+  bg-n8n-purple
+  border-n8n-purple;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white' stroke-width='3'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='m5 13 4 4L19 7'/%3E%3C/svg%3E");
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.checkbox-n8n:checked:hover {
+  @apply bg-n8n-purple-light;
+}
+
+.checkbox-n8n:disabled {
+  @apply
+  cursor-not-allowed
+  opacity-40;
+}
+
+.checkbox-n8n:focus {
+  box-shadow: 0 0 0 3px rgba(107, 33, 239, 0.2);
+}
+
+/* n8n Radio */
+.radio-n8n {
+  @apply
+  h-4 w-4
+  appearance-none
+  rounded-full
+  border border-n8n-lavender/40
+  bg-white/5
+  cursor-pointer
+  transition-all duration-200;
+}
+
+.radio-n8n:hover:not(:disabled) {
+  @apply border-n8n-lavender/60 bg-white/8;
+}
+
+.radio-n8n:checked {
+  @apply
+  border-n8n-purple;
+  background: radial-gradient(
+    circle at center,
+    var(--color-n8n-purple) 0%,
+    var(--color-n8n-purple) 40%,
+    transparent 40%,
+    transparent 100%
+  );
+}
+
+.radio-n8n:checked:hover {
+  @apply border-n8n-purple-light;
+}
+
+.radio-n8n:disabled {
+  @apply
+  cursor-not-allowed
+  opacity-40;
+}
+
+.radio-n8n:focus {
+  box-shadow: 0 0 0 3px rgba(107, 33, 239, 0.2);
+}
+
+/* ============================================
+ * n8n-INSPIRED TOGGLE/SWITCH
+ * ============================================ */
+
+.toggle-n8n {
+  @apply
+  relative
+  h-6 w-11
+  rounded-full
+  bg-white/20
+  cursor-pointer
+  transition-all duration-200;
+}
+
+.toggle-n8n::after {
+  content: '';
+  @apply
+  absolute
+  left-0.5 top-0.5
+  h-5 w-5
+  rounded-full
+  bg-white
+  transition-transform duration-200
+  shadow-sm;
+}
+
+.toggle-n8n:hover:not(.toggle-n8n-disabled) {
+  @apply bg-white/30;
+}
+
+.toggle-n8n-checked {
+  @apply bg-n8n-purple;
+}
+
+.toggle-n8n-checked::after {
+  transform: translateX(1.25rem);
+}
+
+.toggle-n8n-checked:hover {
+  @apply bg-n8n-purple-light;
+}
+
+.toggle-n8n-disabled {
+  @apply
+  cursor-not-allowed
+  opacity-40;
+}

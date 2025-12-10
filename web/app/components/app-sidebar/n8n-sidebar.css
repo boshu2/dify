@@ -1,0 +1,311 @@
+/* ============================================
+ * n8n-INSPIRED SIDEBAR STYLES
+ * Dark sidebar with purple accent navigation
+ * ============================================ */
+
+/* Main sidebar container */
+.sidebar-n8n {
+  @apply
+  h-full
+  bg-n8n-navy-900
+  border-r border-white/8;
+  width: 260px;
+  transition: width 0.2s ease;
+}
+
+.sidebar-n8n-collapsed {
+  width: 64px;
+}
+
+/* Sidebar header / branding */
+.sidebar-n8n-header {
+  @apply
+  flex items-center gap-3
+  px-4 py-5
+  border-b border-white/8;
+}
+
+.sidebar-n8n-logo {
+  @apply
+  w-8 h-8
+  rounded-lg
+  bg-gradient-to-br from-n8n-orange to-n8n-purple
+  flex items-center justify-center
+  text-white font-bold text-sm;
+}
+
+.sidebar-n8n-brand {
+  @apply
+  text-lg font-semibold
+  text-white/95;
+}
+
+/* Sidebar navigation */
+.sidebar-n8n-nav {
+  @apply
+  flex flex-col gap-1
+  p-3;
+}
+
+/* Nav section label */
+.sidebar-n8n-section-label {
+  @apply
+  px-3 py-2 mt-4 mb-1
+  text-xs font-medium uppercase tracking-wider
+  text-n8n-lavender/50;
+}
+
+/* Nav item base */
+.sidebar-n8n-item {
+  @apply
+  flex items-center gap-3
+  px-3 py-2.5
+  rounded-xl
+  text-n8n-lavender
+  cursor-pointer
+  transition-all duration-150;
+}
+
+.sidebar-n8n-item:hover {
+  @apply
+  bg-white/6
+  text-white/90;
+}
+
+.sidebar-n8n-item-active {
+  @apply
+  bg-n8n-purple/20
+  text-white/95;
+  box-shadow: inset 3px 0 0 #6B21EF;
+}
+
+/* Nav item icon */
+.sidebar-n8n-item-icon {
+  @apply
+  w-5 h-5
+  flex-shrink-0;
+}
+
+/* Nav item text */
+.sidebar-n8n-item-text {
+  @apply
+  flex-1
+  text-sm font-medium
+  truncate;
+}
+
+/* Nav item badge */
+.sidebar-n8n-item-badge {
+  @apply
+  px-2 py-0.5
+  rounded-full
+  bg-n8n-orange
+  text-white text-xs font-medium;
+}
+
+/* Collapsed state icons only */
+.sidebar-n8n-collapsed .sidebar-n8n-item {
+  @apply justify-center px-0;
+}
+
+.sidebar-n8n-collapsed .sidebar-n8n-item-text,
+.sidebar-n8n-collapsed .sidebar-n8n-item-badge,
+.sidebar-n8n-collapsed .sidebar-n8n-section-label,
+.sidebar-n8n-collapsed .sidebar-n8n-brand {
+  @apply hidden;
+}
+
+/* Sidebar footer */
+.sidebar-n8n-footer {
+  @apply
+  mt-auto
+  p-3
+  border-t border-white/8;
+}
+
+/* User profile section */
+.sidebar-n8n-user {
+  @apply
+  flex items-center gap-3
+  px-3 py-2.5
+  rounded-xl
+  cursor-pointer
+  transition-all duration-150;
+}
+
+.sidebar-n8n-user:hover {
+  @apply bg-white/6;
+}
+
+.sidebar-n8n-user-avatar {
+  @apply
+  w-8 h-8
+  rounded-full
+  bg-gradient-to-br from-n8n-purple to-n8n-orange
+  flex items-center justify-center
+  text-white text-sm font-medium;
+}
+
+.sidebar-n8n-user-info {
+  @apply flex-1 min-w-0;
+}
+
+.sidebar-n8n-user-name {
+  @apply
+  text-sm font-medium
+  text-white/90
+  truncate;
+}
+
+.sidebar-n8n-user-email {
+  @apply
+  text-xs
+  text-n8n-lavender/60
+  truncate;
+}
+
+/* Workspace selector */
+.sidebar-n8n-workspace {
+  @apply
+  flex items-center gap-3
+  mx-3 mb-3 px-3 py-2.5
+  rounded-xl
+  bg-white/5
+  border border-white/8
+  cursor-pointer
+  transition-all duration-150;
+}
+
+.sidebar-n8n-workspace:hover {
+  @apply border-white/15 bg-white/8;
+}
+
+.sidebar-n8n-workspace-icon {
+  @apply
+  w-6 h-6
+  rounded-md
+  bg-n8n-purple/30
+  flex items-center justify-center
+  text-n8n-purple text-xs font-bold;
+}
+
+.sidebar-n8n-workspace-name {
+  @apply
+  flex-1
+  text-sm font-medium
+  text-white/90
+  truncate;
+}
+
+.sidebar-n8n-workspace-chevron {
+  @apply
+  w-4 h-4
+  text-n8n-lavender/60;
+}
+
+/* Quick actions */
+.sidebar-n8n-quick-actions {
+  @apply
+  flex items-center gap-2
+  px-3 mb-3;
+}
+
+.sidebar-n8n-quick-action {
+  @apply
+  flex-1
+  flex items-center justify-center gap-2
+  py-2
+  rounded-lg
+  bg-n8n-purple/20
+  border border-n8n-purple/30
+  text-sm font-medium
+  text-n8n-purple-light
+  cursor-pointer
+  transition-all duration-150;
+}
+
+.sidebar-n8n-quick-action:hover {
+  @apply
+  bg-n8n-purple/30
+  border-n8n-purple/50;
+}
+
+/* Divider */
+.sidebar-n8n-divider {
+  @apply
+  mx-3 my-2
+  h-px
+  bg-white/8;
+}
+
+/* Tooltip for collapsed state */
+.sidebar-n8n-tooltip {
+  @apply
+  absolute left-full ml-2
+  px-3 py-1.5
+  rounded-lg
+  bg-n8n-navy-700
+  border border-white/10
+  text-sm text-white/90
+  whitespace-nowrap
+  opacity-0 invisible
+  transition-all duration-150
+  z-50;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.sidebar-n8n-item:hover .sidebar-n8n-tooltip {
+  @apply opacity-100 visible;
+}
+
+/* Notification dot */
+.sidebar-n8n-notification {
+  @apply
+  absolute top-1 right-1
+  w-2 h-2
+  rounded-full
+  bg-n8n-orange;
+  animation: notificationPulse 2s ease-in-out infinite;
+}
+
+@keyframes notificationPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Search box in sidebar */
+.sidebar-n8n-search {
+  @apply
+  flex items-center gap-2
+  mx-3 mb-4 px-3 py-2
+  rounded-lg
+  bg-white/6
+  border border-white/8
+  transition-all duration-150;
+}
+
+.sidebar-n8n-search:focus-within {
+  @apply
+  border-n8n-purple/50
+  bg-white/8;
+  box-shadow: 0 0 0 3px rgba(107, 33, 239, 0.15);
+}
+
+.sidebar-n8n-search-icon {
+  @apply
+  w-4 h-4
+  text-n8n-lavender/60;
+}
+
+.sidebar-n8n-search-input {
+  @apply
+  flex-1
+  bg-transparent
+  text-sm text-white/90
+  placeholder:text-n8n-lavender/40
+  outline-none;
+}

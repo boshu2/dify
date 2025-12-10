@@ -1,4 +1,5 @@
 import tailwindThemeVarDefine from './themes/tailwind-theme-var-define'
+import { n8nColors, n8nThemeVars } from './themes/n8n-colors'
 
 const config = {
   theme: {
@@ -57,7 +58,10 @@ const config = {
           600: '#444CE7',
           800: '#2D31A6',
         },
+        // n8n brand colors
+        ...n8nColors,
         ...tailwindThemeVarDefine,
+        ...n8nThemeVars,
       },
       screens: {
         'mobile': '100px',
