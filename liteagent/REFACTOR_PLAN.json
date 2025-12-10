@@ -1,0 +1,293 @@
+{
+  "project": "LiteAgent Refactor",
+  "created": "2025-12-10",
+  "summary": {
+    "total_lines_to_remove": 5850,
+    "percentage_reduction": "27%",
+    "features": 8,
+    "total_tasks": 32
+  },
+  "features": [
+    {
+      "id": "F1",
+      "name": "Remove Dead Library Duplicates",
+      "priority": "critical",
+      "estimated_lines_removed": 1650,
+      "description": "Delete custom implementations that duplicate libraries already in pyproject.toml",
+      "tasks": [
+        {
+          "id": "F1.1",
+          "task": "Delete core/retry.py and update imports to use tenacity",
+          "files": ["app/core/retry.py", "tests/unit/test_retry.py"],
+          "lines": 216,
+          "status": "pending"
+        },
+        {
+          "id": "F1.2",
+          "task": "Delete core/circuit_breaker.py and update imports to use circuitbreaker library",
+          "files": ["app/core/circuit_breaker.py", "tests/unit/test_circuit_breaker.py"],
+          "lines": 254,
+          "status": "pending"
+        },
+        {
+          "id": "F1.3",
+          "task": "Delete core/rate_limiter.py and implement with slowapi",
+          "files": ["app/core/rate_limiter.py", "tests/unit/test_redis_infrastructure.py"],
+          "lines": 451,
+          "status": "pending"
+        },
+        {
+          "id": "F1.4",
+          "task": "Replace core/logging.py with structlog configuration",
+          "files": ["app/core/logging.py", "tests/unit/test_logging.py"],
+          "lines": 740,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "F2",
+      "name": "Wire or Remove Test-Only Modules",
+      "priority": "high",
+      "estimated_lines_removed": 2700,
+      "description": "Modules that have tests but are not connected to the application",
+      "tasks": [
+        {
+          "id": "F2.1",
+          "task": "Wire core/tools.py to agents or remove - decide based on usage",
+          "files": ["app/core/tools.py"],
+          "lines": 934,
+          "decision_needed": "Keep core tool system (390 lines), remove 10 builtin tools (544 lines) or move to plugins",
+          "status": "pending"
+        },
+        {
+          "id": "F2.2",
+          "task": "Wire core/pubsub.py to streaming endpoints or remove",
+          "files": ["app/core/pubsub.py"],
+          "lines": 479,
+          "status": "pending"
+        },
+        {
+          "id": "F2.3",
+          "task": "Wire core/model_fallback.py to LLM providers or remove",
+          "files": ["app/core/model_fallback.py"],
+          "lines": 467,
+          "status": "pending"
+        },
+        {
+          "id": "F2.4",
+          "task": "Wire core/memory.py to conversation service or remove",
+          "files": ["app/core/memory.py"],
+          "lines": 428,
+          "status": "pending"
+        },
+        {
+          "id": "F2.5",
+          "task": "Wire core/registry.py to plugin system or remove",
+          "files": ["app/core/registry.py"],
+          "lines": 420,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "F3",
+      "name": "Replace Custom Code with Libraries",
+      "priority": "high",
+      "estimated_lines_removed": 1100,
+      "description": "Replace hand-rolled implementations with battle-tested libraries",
+      "tasks": [
+        {
+          "id": "F3.1",
+          "task": "Replace BM25 implementation with rank-bm25 library",
+          "files": ["app/rag/retriever.py"],
+          "lines": 150,
+          "library": "rank-bm25",
+          "status": "pending"
+        },
+        {
+          "id": "F3.2",
+          "task": "Replace LangFuse exporter with official langfuse SDK",
+          "files": ["app/core/observability/exporters/langfuse.py"],
+          "lines": 277,
+          "library": "langfuse",
+          "status": "pending"
+        },
+        {
+          "id": "F3.3",
+          "task": "Replace LangSmith exporter with official langsmith SDK",
+          "files": ["app/core/observability/exporters/langsmith.py"],
+          "lines": 223,
+          "library": "langsmith",
+          "status": "pending"
+        },
+        {
+          "id": "F3.4",
+          "task": "Replace GitLab provider with python-gitlab library",
+          "files": ["app/providers/datasource/gitlab_provider.py"],
+          "lines": 348,
+          "library": "python-gitlab",
+          "status": "pending"
+        },
+        {
+          "id": "F3.5",
+          "task": "Use jinja2 directly instead of custom template substitution",
+          "files": ["app/workflows/handlers.py", "app/core/sandbox/transformers.py"],
+          "lines": 100,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "F4",
+      "name": "Fix Security Issues",
+      "priority": "critical",
+      "estimated_lines_removed": 0,
+      "description": "Replace dangerous eval() calls with safe alternatives",
+      "tasks": [
+        {
+          "id": "F4.1",
+          "task": "Add simpleeval to dependencies",
+          "files": ["pyproject.toml"],
+          "status": "pending"
+        },
+        {
+          "id": "F4.2",
+          "task": "Replace eval() in ConditionNodeHandler with simpleeval",
+          "files": ["app/workflows/handlers.py"],
+          "line_numbers": [138],
+          "status": "pending"
+        },
+        {
+          "id": "F4.3",
+          "task": "Replace eval() in LoopNodeHandler with simpleeval",
+          "files": ["app/workflows/handlers.py"],
+          "line_numbers": [690],
+          "status": "pending"
+        },
+        {
+          "id": "F4.4",
+          "task": "Replace eval() in VariableAggregatorNodeHandler with simpleeval",
+          "files": ["app/workflows/handlers.py"],
+          "line_numbers": [825],
+          "status": "pending"
+        },
+        {
+          "id": "F4.5",
+          "task": "Replace eval() in CalculatorTool with simpleeval",
+          "files": ["app/core/tools.py"],
+          "line_numbers": [465],
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "F5",
+      "name": "Code Deduplication",
+      "priority": "medium",
+      "estimated_lines_removed": 100,
+      "description": "Remove duplicated code patterns",
+      "tasks": [
+        {
+          "id": "F5.1",
+          "task": "Extract shared SAFE_BUILTINS constant",
+          "files": ["app/workflows/handlers.py"],
+          "line_numbers": ["435-491", "699-721"],
+          "status": "pending"
+        },
+        {
+          "id": "F5.2",
+          "task": "Simplify HTTP method handling using httpx.request(method=)",
+          "files": ["app/workflows/handlers.py"],
+          "line_numbers": ["249-270"],
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "F6",
+      "name": "Connect Chat to Real Providers",
+      "priority": "critical",
+      "estimated_lines_removed": 0,
+      "description": "Wire the chat API to actual LLM providers instead of mocks",
+      "tasks": [
+        {
+          "id": "F6.1",
+          "task": "Replace MockStreamingLLMClient with real provider integration",
+          "files": ["app/api/routes/chat.py"],
+          "status": "pending"
+        },
+        {
+          "id": "F6.2",
+          "task": "Wire /chat/stream endpoint to use configured LLM provider",
+          "files": ["app/api/routes/chat.py"],
+          "status": "pending"
+        },
+        {
+          "id": "F6.3",
+          "task": "Wire /chat/complete endpoint to use twelve_factor_agent with real LLM",
+          "files": ["app/api/routes/chat.py"],
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "F7",
+      "name": "Create Missing Services for Celery Tasks",
+      "priority": "high",
+      "estimated_lines_removed": 0,
+      "description": "Celery tasks reference services that don't exist",
+      "tasks": [
+        {
+          "id": "F7.1",
+          "task": "Create DocumentService for indexing tasks",
+          "files": ["app/services/document_service.py"],
+          "status": "pending"
+        },
+        {
+          "id": "F7.2",
+          "task": "Create KnowledgeService for knowledge base tasks",
+          "files": ["app/services/knowledge_service.py"],
+          "status": "pending"
+        },
+        {
+          "id": "F7.3",
+          "task": "Create WorkflowService for workflow tasks",
+          "files": ["app/services/workflow_service.py"],
+          "status": "pending"
+        },
+        {
+          "id": "F7.4",
+          "task": "Create ScheduleService for scheduled tasks",
+          "files": ["app/services/schedule_service.py"],
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "F8",
+      "name": "Clean Up Unused Dependencies",
+      "priority": "low",
+      "estimated_lines_removed": 0,
+      "description": "Remove or use dependencies in pyproject.toml",
+      "tasks": [
+        {
+          "id": "F8.1",
+          "task": "Audit all dependencies - remove unused or implement usage",
+          "files": ["pyproject.toml"],
+          "status": "pending"
+        }
+      ]
+    }
+  ],
+  "execution_order": [
+    "F4 - Security fixes first",
+    "F6 - Connect chat to make app functional",
+    "F1 - Remove dead code",
+    "F7 - Create missing services",
+    "F3 - Replace with libraries",
+    "F2 - Wire or remove test-only modules",
+    "F5 - Deduplication",
+    "F8 - Cleanup"
+  ]
+}
