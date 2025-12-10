@@ -1,0 +1,274 @@
+# LiteAgent Docker Compose
+# Orchestrates all microservices
+#
+# Usage:
+#   docker-compose up -d              # Start all services
+#   docker-compose up -d --scale worker=3  # Scale workers
+#   docker-compose logs -f api        # View API logs
+#   docker-compose down               # Stop all services
+
+version: "3.8"
+
+services:
+  # ==========================================================================
+  # Gateway
+  # ==========================================================================
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/nginx-health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - default
+
+  # ==========================================================================
+  # Application Services
+  # ==========================================================================
+
+  # Main API service
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    environment:
+      - APP_ENV=${APP_ENV:-production}
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-liteagent}
+      - REDIS_URL=redis://${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/0
+      - CELERY_BROKER_URL=redis://${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/1
+      - QDRANT_URL=http://${QDRANT_HOST:-qdrant}:${QDRANT_PORT:-6333}
+      - SANDBOX_MODE=${SANDBOX_MODE:-remote}
+      - SANDBOX_ENDPOINT=http://sandbox:8194
+      - SANDBOX_API_KEY=${SANDBOX_API_KEY:-liteagent-sandbox}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - default
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+
+  # Celery worker for async tasks
+  worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    command: >
+      celery -A app.celery worker
+      --loglevel=${LOG_LEVEL:-info}
+      --concurrency=${CELERY_WORKER_CONCURRENCY:-4}
+      --queues=${CELERY_QUEUES:-default,indexing,workflow,embedding}
+    environment:
+      - APP_ENV=${APP_ENV:-production}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-liteagent}
+      - REDIS_URL=redis://${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/0
+      - CELERY_BROKER_URL=redis://${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/1
+      - QDRANT_URL=http://${QDRANT_HOST:-qdrant}:${QDRANT_PORT:-6333}
+      - SANDBOX_MODE=${SANDBOX_MODE:-remote}
+      - SANDBOX_ENDPOINT=http://sandbox:8194
+      - SANDBOX_API_KEY=${SANDBOX_API_KEY:-liteagent-sandbox}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - default
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+
+  # Celery beat scheduler for periodic tasks
+  beat:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    command: celery -A app.celery beat --loglevel=${LOG_LEVEL:-info}
+    environment:
+      - APP_ENV=${APP_ENV:-production}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-liteagent}
+      - REDIS_URL=redis://${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/0
+      - CELERY_BROKER_URL=redis://${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/1
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - default
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  # Web frontend (placeholder - implement with Next.js)
+  web:
+    image: nginx:alpine
+    volumes:
+      - ./nginx/web-placeholder.html:/usr/share/nginx/html/index.html:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - default
+
+  # ==========================================================================
+  # Sandbox Service (Isolated)
+  # ==========================================================================
+
+  sandbox:
+    build:
+      context: ../sandbox
+      dockerfile: Dockerfile
+    environment:
+      - SANDBOX_API_KEY=${SANDBOX_API_KEY:-liteagent-sandbox}
+      - SANDBOX_MAX_WORKERS=${SANDBOX_MAX_WORKERS:-4}
+      - SANDBOX_EXECUTION_TIMEOUT=${SANDBOX_EXECUTION_TIMEOUT:-30}
+      - SANDBOX_ENABLE_NETWORK=false
+    networks:
+      - sandbox-internal
+      - default
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1G
+        reservations:
+          cpus: "0.5"
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8194/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # ==========================================================================
+  # Data Services
+  # ==========================================================================
+
+  # PostgreSQL database
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-liteagent}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - default
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+
+  # Redis for caching and message broker
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - default
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+
+  # Vector database for RAG
+  qdrant:
+    image: qdrant/qdrant:latest
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - default
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+
+# ==========================================================================
+# Networks
+# ==========================================================================
+
+networks:
+  default:
+    driver: bridge
+  sandbox-internal:
+    # Isolated network for sandbox - no external access
+    internal: true
+    driver: bridge
+
+# ==========================================================================
+# Volumes
+# ==========================================================================
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  qdrant_data:
+    driver: local
